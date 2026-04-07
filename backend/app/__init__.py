@@ -1,0 +1,1 @@
+"""Hospital appointment API (FastAPI)."""
