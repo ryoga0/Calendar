@@ -17,10 +17,12 @@ pip install fastapi uvicorn
 `frontend/` で実行:
 
 ```bash
-npm create vite@latest hospital-app -- --template react
+python -m venv venv
+venv\Scripts\activate
 cd hospital-app
-npm install
-npm install react-router-dom
+npm install react@18 react-dom@18
+npm install react-day-picker
+npm install @chakra-ui/react@2 @emotion/react @emotion/styled framer-motion
 ```
 
 ## 起動方法
