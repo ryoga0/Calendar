@@ -1,4 +1,3 @@
-// src/pages/Login.jsx
 import { useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch } from "../api/client";
@@ -13,23 +12,51 @@ export default function Login() {
 
   const handleLogin = async () => {
     try {
+      // ログインを試す
       const data = await apiFetch("/auth/login", "POST", {
         email,
         password,
       });
+
       login(data);
       navigate("/");
     } catch (e) {
-      alert(e.message);
+      try {
+        // ログイン失敗 → 登録を試す
+        const data = await apiFetch("/auth/register", "POST", {
+          email,
+          password,
+        });
+
+        login(data);
+        navigate("/");
+      } catch (err) {
+        alert("ログインまたは登録に失敗しました");
+      }
     }
   };
 
   return (
     <div>
       <h2>ログイン</h2>
-      <input onChange={(e) => setEmail(e.target.value)} placeholder="email" />
-      <input type="password" onChange={(e) => setPassword(e.target.value)} placeholder="password" />
-      <button onClick={handleLogin}>ログイン</button>
+
+      <input
+        type="email"
+        placeholder="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+
+      <input
+        type="password"
+        placeholder="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+
+      <button onClick={handleLogin}>
+        ログイン
+      </button>
     </div>
   );
 }

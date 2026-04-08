@@ -23,7 +23,17 @@ export default function Home() {
         予約一覧
       </button>
 
-      <button onClick={logout}>ログアウト</button>
+      {!token && (
+        <button onClick={() => navigate("/login")}>
+          ログイン
+        </button>
+      )}
+
+      {token && (
+        <button onClick={logout}>
+          ログアウト
+        </button>
+      )}
 
       {departments.map((d) => (
         <div key={d.id}>
