@@ -1,5 +1,3 @@
-未完成で様々な箇所で取得失敗のエラーが出る
-
 ## 環境構築
 
 ### 1. Backend (FastAPI)
@@ -17,10 +15,12 @@ pip install fastapi uvicorn
 `frontend/` で実行:
 
 ```bash
-npm create vite@latest hospital-app -- --template react
+python -m venv venv
+venv\Scripts\activate
 cd hospital-app
-npm install
-npm install react-router-dom
+npm install react@18 react-dom@18
+npm install react-day-picker
+npm install @chakra-ui/react@2 @emotion/react @emotion/styled framer-motion
 ```
 
 ## 起動方法
@@ -44,4 +44,4 @@ API は `http://127.0.0.1:8000` で起動します。
 npm run dev 
 ```
 
-ブラウザで `http://localhost:3000` を開きます。
+ブラウザで `http://localhost:5173` を開きます。
