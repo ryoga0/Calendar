@@ -105,14 +105,16 @@ def delete_appointment(
     appointment_id: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> dict[str, str]:
-
+):
     appt = db.get(Appointment, appointment_id)
 
     if not appt or appt.user_id != user.id:
-        raise AppError("NOT_FOUND", "予約が見つかりません。", 404)
+        raise AppError("NOT_FOUND", "予約が見つかりません", 404)
 
-    db.delete(appt)
+    appt.status = "cancelled"
+    appt.updated_at = utcnow()
+
+    db.add(appt)
     db.commit()
 
-    return {"status": "deleted"}
+    return {"status": "ok"}
