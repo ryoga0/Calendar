@@ -1,9 +1,8 @@
 import uuid
-from datetime import datetime
-
-from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
+from fastapi import APIRouter, Depends
 
 from app.config import settings
 from app.database import get_db
@@ -23,23 +22,27 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)) -> TokenRespo
     if exists:
         raise AppError("CONFLICT", "このメールアドレスは既に登録されています。", 409)
 
-    local = body.email.split("@")[0][:20] or "ユーザー"
     now = utcnow()
+
     user = User(
         id=str(uuid.uuid4()),
         email=body.email,
         password_hash=hash_password(body.password),
-        display_name=local,
-        phone=None,
+
+        name=body.name,
+        phone=body.phone,
+
         created_at=now,
         updated_at=now,
     )
+
     db.add(user)
     db.commit()
     db.refresh(user)
 
     token = create_access_token(user.id)
     expires_in = settings.access_token_expire_minutes * 60
+
     return TokenResponse(
         access_token=token,
         expires_in=expires_in,
@@ -50,11 +53,13 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)) -> TokenRespo
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     user = db.scalar(select(User).where(User.email == body.email))
+
     if not user or not verify_password(body.password, user.password_hash):
         raise AppError("UNAUTHORIZED", "メールアドレスまたはパスワードが正しくありません。", 401)
 
     token = create_access_token(user.id)
     expires_in = settings.access_token_expire_minutes * 60
+
     return TokenResponse(
         access_token=token,
         expires_in=expires_in,

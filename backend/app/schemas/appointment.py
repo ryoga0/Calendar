@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 class AppointmentCreate(BaseModel):
     department_id: str = Field(min_length=1)
-    slot_id: str = Field(min_length=1)
+    start_at: datetime
 
 
 class AppointmentPatch(BaseModel):

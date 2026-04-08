@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useAuth } from "../auth/AuthContext";
+import { useLocation, useNavigate } from "react-router-dom";
 import { apiFetch } from "../api/client";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 
 import {
   Box,
@@ -12,38 +12,39 @@ import {
   FormControl,
   FormLabel,
   Container,
-  Text,
+  Alert,
+  AlertIcon,
 } from "@chakra-ui/react";
 
-export default function Login() {
-  const { login } = useAuth();
+export default function Register() {
+  const location = useLocation();
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  const [email, setEmail] = useState("");
+  // state
+  const [email, setEmail] = useState(location.state?.email || "");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  const handleLogin = async () => {
+  const message = location.state?.message;
+
+  const handleRegister = async () => {
     setLoading(true);
-    setError("");
 
     try {
-      const data = await apiFetch("/auth/login", "POST", {
+      const data = await apiFetch("/auth/register", "POST", {
         email,
         password,
+        name,
+        phone,
       });
 
       login(data);
       navigate("/");
     } catch (e) {
-      // 👇 登録画面へ遷移（メッセージ付き）
-      navigate("/register", {
-        state: {
-          email,
-          message: "アカウントが存在しません。新規登録してください。",
-        },
-      });
+      alert(e.message || "登録失敗");
     } finally {
       setLoading(false);
     }
@@ -60,10 +61,36 @@ export default function Login() {
         boxShadow="md"
       >
         <Heading mb={6} textAlign="center">
-          ログイン
+          新規登録
         </Heading>
 
+        {/* メッセージ表示 */}
+        {message && (
+          <Alert status="warning" mb={4}>
+            <AlertIcon />
+            {message}
+          </Alert>
+        )}
+
         <VStack spacing={4}>
+          <FormControl>
+            <FormLabel>名前</FormLabel>
+            <Input
+              size="lg"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </FormControl>
+
+          <FormControl>
+            <FormLabel>電話番号</FormLabel>
+            <Input
+              size="lg"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+          </FormControl>
+
           <FormControl>
             <FormLabel>メールアドレス</FormLabel>
             <Input
@@ -84,16 +111,21 @@ export default function Login() {
             />
           </FormControl>
 
-          {error && <Text color="red.500">{error}</Text>}
-
           <Button
-            colorScheme="blue"
+            colorScheme="teal"
             size="lg"
             w="100%"
-            onClick={handleLogin}
+            onClick={handleRegister}
             isLoading={loading}
           >
-            ログイン
+            登録する
+          </Button>
+
+          <Button
+            variant="link"
+            onClick={() => navigate("/login")}
+          >
+            ログインに戻る
           </Button>
         </VStack>
       </Box>

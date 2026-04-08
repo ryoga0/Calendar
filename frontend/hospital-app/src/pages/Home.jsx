@@ -1,8 +1,14 @@
-// src/pages/Home.jsx
 import { useEffect, useState } from "react";
 import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
+
+import {
+  Box,
+  Heading,
+  Button,
+  VStack,
+} from "@chakra-ui/react";
 
 export default function Home() {
   const { token, logout } = useAuth();
@@ -16,32 +22,45 @@ export default function Home() {
   }, []);
 
   return (
-    <div>
-      <h2>診療科</h2>
+    <Box p={6}>
+      <Heading mb={4}>診療科</Heading>
 
-      <button onClick={() => navigate("/appointments")}>
-        予約一覧
-      </button>
+      <VStack spacing={4} align="stretch">
+        <Button
+          colorScheme="blue"
+          onClick={() => navigate("/appointments")}
+        >
+          予約一覧
+        </Button>
 
-      {!token && (
-        <button onClick={() => navigate("/login")}>
-          ログイン
-        </button>
-      )}
+        {!token && (
+          <Button
+            colorScheme="teal"
+            onClick={() => navigate("/login")}
+          >
+            ログイン
+          </Button>
+        )}
 
-      {token && (
-        <button onClick={logout}>
-          ログアウト
-        </button>
-      )}
+        {token && (
+          <Button
+            colorScheme="red"
+            onClick={logout}
+          >
+            ログアウト
+          </Button>
+        )}
 
-      {departments.map((d) => (
-        <div key={d.id}>
-          <button onClick={() => navigate(`/book/${d.id}`)}>
+        {departments.map((d) => (
+          <Button
+            key={d.id}
+            size="lg"
+            onClick={() => navigate(`/book/${d.name}`)}
+          >
             {d.name}
-          </button>
-        </div>
-      ))}
-    </div>
+          </Button>
+        ))}
+      </VStack>
+    </Box>
   );
 }

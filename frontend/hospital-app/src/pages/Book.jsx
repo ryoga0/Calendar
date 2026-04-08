@@ -1,20 +1,27 @@
-import { useParams, useSearchParams } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { useState } from "react";
+import { DayPicker } from "react-day-picker";
+import "react-day-picker/dist/style.css";
 import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+
+import {
+  Box,
+  Heading,
+  Text,
+  Button,
+  VStack,
+  SimpleGrid,
+  Container,
+} from "@chakra-ui/react";
 
 export default function Book() {
   const { id } = useParams();
   const { token } = useAuth();
-  const [slots, setSlots] = useState([]);
-  const [searchParams] = useSearchParams();
 
-  const rawDate = searchParams.get("date");
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [loadingTime, setLoadingTime] = useState(null);
 
-  // YYYY-MM-DD に変換
-  const date = rawDate ? rawDate.split("T")[0] : null;
-
-  // デフォルト時間
   const defaultTimes = [
     "09:00",
     "10:00",
@@ -24,72 +31,80 @@ export default function Book() {
     "15:00",
   ];
 
-  useEffect(() => {
-    if (!date) {
-      alert("日付がありません");
-      return;
+  const handleReserve = async (time) => {
+    if (!selectedDate) return;
+
+    setLoadingTime(time);
+
+    const datetime = new Date(selectedDate);
+    const [hour, minute] = time.split(":").map(Number);
+
+    datetime.setHours(hour, minute, 0, 0);
+
+    const localDateTime = `${datetime.getFullYear()}-${String(
+      datetime.getMonth() + 1
+    ).padStart(2, "0")}-${String(datetime.getDate()).padStart(
+      2,
+      "0"
+    )}T${String(hour).padStart(2, "0")}:${String(minute).padStart(
+      2,
+      "0"
+    )}:00`;
+
+    try {
+      await apiFetch(
+        "/appointments",
+        "POST",
+        {
+          department_id: id,
+          start_at: localDateTime,
+        },
+        token
+      );
+
+      alert(`予約しました: ${localDateTime}`);
+    } catch (e) {
+      alert(e.message || "予約失敗");
+    } finally {
+      setLoadingTime(null);
     }
-
-    apiFetch(
-      `/slots?department_id=${id}&from_date=${date}&to_date=${date}`,
-      "GET",
-      null,
-      token
-    )
-      .then((res) => {
-        const items = res.items || [];
-
-        // DB空のとき
-        if (items.length === 0) {
-          const generated = defaultTimes.map((time, i) => ({
-            id: i,
-            start_at: `${date}T${time}:00`,
-            is_default: true,
-          }));
-
-          setSlots(generated);
-        } else {
-          // DBにある予約時間を除外
-          const bookedTimes = items.map((s) =>
-            new Date(s.start_at).toTimeString().slice(0, 5)
-          );
-
-          const available = defaultTimes
-            .filter((t) => !bookedTimes.includes(t))
-            .map((time, i) => ({
-              id: i,
-              start_at: `${date}T${time}:00`,
-              is_default: true,
-            }));
-
-          setSlots(available);
-        }
-      })
-      .catch((e) => {
-        console.error(e);
-        alert("取得失敗");
-      });
-  }, [date]);
+  };
 
   return (
-    <div>
-      <h2>時間選択</h2>
+    <Container py={6}>
+      <Heading mb={4}>予約</Heading>
 
-      {!date && <div>日付が選択されていません</div>}
+      <Text mb={4}>診療科: {id}</Text>
 
-      {slots.map((s) => (
-        <div key={s.id}>
-          {new Date(s.start_at).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-          <button onClick={() => alert("予約処理")}>
-            予約
-          </button>
-        </div>
-      ))}
+      <Box mb={6}>
+        <DayPicker
+          mode="single"
+          selected={selectedDate}
+          onSelect={setSelectedDate}
+        />
+      </Box>
 
-      {slots.length === 0 && <div>予約できる時間がありません</div>}
-    </div>
+      {selectedDate && (
+        <Box>
+          <Heading size="md" mb={4}>
+            {selectedDate.toLocaleDateString()} の予約
+          </Heading>
+
+          <SimpleGrid columns={2} spacing={4}>
+            {defaultTimes.map((time) => (
+              <Button
+                key={time}
+                size="lg"
+                colorScheme="teal"
+                onClick={() => handleReserve(time)}
+                isLoading={loadingTime === time}
+              >
+                {time}
+              </Button>
+            ))}
+          </SimpleGrid>
+        </Box>
+      )}
+    </Container>
   );
 }

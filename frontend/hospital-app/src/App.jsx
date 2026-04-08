@@ -4,8 +4,8 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Book from "./pages/Book";
 import Appointments from "./pages/Appointments";
+import Register from "./pages/Register";
 import { AuthProvider } from "./auth/AuthContext";
-import SelectDate from "./pages/SelectDate";
 
 function App() {
   return (
@@ -14,9 +14,9 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Home />} />
-          <Route path="/book/:id" element={<SelectDate />} />
-          <Route path="/book/:id/time" element={<Book />} />
+          <Route path="/book/:id" element={<Book />} />
           <Route path="/appointments" element={<Appointments />} />
+          <Route path="/register" element={<Register />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

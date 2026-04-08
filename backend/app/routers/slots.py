@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models import DepartmentClosure, Slot
 from app.schemas.slot import SlotListResponse, SlotOut
 from app.utils.timeutil import aware_utc, to_local_date, utcnow
 
