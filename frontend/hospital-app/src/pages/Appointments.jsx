@@ -1,100 +1,135 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  Alert,
+  AlertIcon,
+  Box,
+  Button,
+  HStack,
+  Stack,
+  Text,
+} from "@chakra-ui/react";
+import { LoadingCard } from "../components/LoadingState";
+import PageShell from "../components/PageShell";
 import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-
-import {
-  Box,
-  Heading,
-  Text,
-  Button,
-  VStack,
-  Container,
-  HStack,
-  Spinner,
-} from "@chakra-ui/react";
+import { formatDateTime } from "../utils/dateTime";
 
 export default function Appointments() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { token } = useAuth();
-  const [list, setList] = useState([]);
-  const [loadingId, setLoadingId] = useState(null);
+  const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingId, setLoadingId] = useState("");
+  const [error, setError] = useState("");
 
-  const load = () => {
+  const loadAppointments = () => {
     setLoading(true);
+    setError("");
 
     apiFetch("/appointments", "GET", null, token)
-      .then((res) => setList(res.items || res))
-      .catch(() => alert("取得失敗"))
+      .then((res) => setAppointments(res.items))
+      .catch((e) => setError(e.message || "予約一覧の取得に失敗しました。"))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    load();
-  }, []);
+    loadAppointments();
+  }, [token]);
 
-  const cancel = async (id) => {
-    if (!confirm("キャンセルしますか？")) return;
+  const handleCancel = async (appointmentId) => {
+    if (!confirm("この予約をキャンセルしますか？")) {
+      return;
+    }
 
-    setLoadingId(id);
+    setLoadingId(appointmentId);
+    setError("");
 
     try {
-      await apiFetch(`/appointments/${id}`, "DELETE", null, token);
-      load();
+      await apiFetch(`/appointments/${appointmentId}`, "DELETE", null, token);
+      loadAppointments();
     } catch (e) {
-      alert(e.message);
+      setError(e.message || "予約のキャンセルに失敗しました。");
     } finally {
-      setLoadingId(null);
+      setLoadingId("");
     }
   };
 
   return (
-    <Container py={6}>
-      <Heading mb={6}>予約一覧</Heading>
+    <PageShell
+      title="予約一覧"
+      subtitle="現在の予約を確認し、詳細表示・日時変更・キャンセルができます。"
+    >
+      {location.state?.message && (
+        <Alert status="success" mb={4} borderRadius="md">
+          <AlertIcon />
+          <Text>{location.state.message}</Text>
+        </Alert>
+      )}
+
+      {error && (
+        <Alert status="error" mb={4} borderRadius="md">
+          <AlertIcon />
+          <Text>{error}</Text>
+        </Alert>
+      )}
 
       {loading ? (
-        <Spinner />
+        <Stack spacing={4}>
+          <LoadingCard minH="180px" titleWidth="32%" lines={4} />
+          <LoadingCard minH="180px" titleWidth="32%" lines={4} />
+        </Stack>
+      ) : appointments.length === 0 ? (
+        <Box bg="white" borderRadius="24px" p={{ base: 5, md: 7 }} boxShadow="sm">
+          <Stack spacing={4}>
+            <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="800">
+              現在、予約はありません
+            </Text>
+            <Text fontSize="lg" color="surface.700">
+              診療科を選んで、新しい予約をお取りください。
+            </Text>
+            <Button colorScheme="teal" alignSelf="flex-start" onClick={() => navigate("/")}>
+              診療科を選ぶ
+            </Button>
+          </Stack>
+        </Box>
       ) : (
-        <VStack spacing={4} align="stretch">
-          {list.map((a) => {
-            const date = new Date(a.start_at);
-
-            return (
-              <Box
-                key={a.id}
-                p={4}
-                borderWidth="1px"
-                borderRadius="lg"
-                boxShadow="sm"
-              >
-                <HStack justify="space-between">
-                  <Box>
-                    <Text fontWeight="bold">
-                      {a.department_name || a.department_id}
-                    </Text>
-
-                    <Text>
-                      {date.toLocaleDateString()}{" "}
-                      {date.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </Text>
-                  </Box>
-
+        <Stack spacing={4}>
+          {appointments.map((appointment) => (
+            <Box key={appointment.id} bg="white" borderRadius="24px" p={{ base: 5, md: 6 }} boxShadow="sm">
+              <Stack spacing={4}>
+                <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="800">
+                  {appointment.department_name}
+                </Text>
+                <Text fontSize="lg">{formatDateTime(appointment.start_at)}</Text>
+                <HStack spacing={3} flexWrap="wrap">
+                  <Button
+                    colorScheme="teal"
+                    onClick={() => navigate(`/appointments/${appointment.id}`)}
+                  >
+                    詳細を見る
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate(`/appointments/${appointment.id}/edit`)}
+                  >
+                    日時を変更する
+                  </Button>
                   <Button
                     colorScheme="red"
-                    size="md"
-                    onClick={() => cancel(a.id)}
-                    isLoading={loadingId === a.id}
+                    variant="outline"
+                    onClick={() => handleCancel(appointment.id)}
+                    isLoading={loadingId === appointment.id}
                   >
-                    キャンセル
+                    キャンセルする
                   </Button>
                 </HStack>
-              </Box>
-            );
-          })}
-        </VStack>
+              </Stack>
+            </Box>
+          ))}
+        </Stack>
       )}
-    </Container>
+    </PageShell>
   );
 }

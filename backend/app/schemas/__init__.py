@@ -4,9 +4,9 @@ from app.schemas.appointment import (
     AppointmentPatch,
     AppointmentListResponse,
 )
+from app.schemas.availability import AvailabilityItemOut, AvailabilityResponse
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.schemas.department import DepartmentOut, DepartmentListResponse
-from app.schemas.slot import SlotOut, SlotListResponse
 from app.schemas.user import UserOut, UserUpdate
 
 __all__ = [
@@ -17,8 +17,8 @@ __all__ = [
     "UserUpdate",
     "DepartmentOut",
     "DepartmentListResponse",
-    "SlotOut",
-    "SlotListResponse",
+    "AvailabilityItemOut",
+    "AvailabilityResponse",
     "AppointmentCreate",
     "AppointmentPatch",
     "AppointmentOut",

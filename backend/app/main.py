@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from app.routers import departments, appointments, auth
+from app.routers import availability, departments, appointments, auth, users
 from app.database import init_db
 from app.exceptions import AppError
 
@@ -30,5 +30,7 @@ app.add_middleware(
 )
 
 app.include_router(departments.router, prefix="/api/v1")
+app.include_router(availability.router, prefix="/api/v1")
 app.include_router(appointments.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(users.router, prefix="/api/v1")

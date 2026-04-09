@@ -9,7 +9,7 @@ class AppointmentCreate(BaseModel):
 
 
 class AppointmentPatch(BaseModel):
-    slot_id: str = Field(min_length=1)
+    start_at: datetime
 
 
 class AppointmentOut(BaseModel):
@@ -17,7 +17,6 @@ class AppointmentOut(BaseModel):
     user_id: str
     department_id: str
     department_name: str | None = None
-    slot_id: str
     status: str
     start_at: datetime
     end_at: datetime

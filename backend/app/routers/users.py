@@ -21,8 +21,8 @@ def update_me(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UserOut:
-    if body.display_name is not None:
-        user.display_name = body.display_name
+    if body.user_name is not None:
+        user.user_name = body.user_name
     if body.phone is not None:
         user.phone = body.phone
     user.updated_at = utcnow()

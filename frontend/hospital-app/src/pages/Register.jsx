@@ -1,134 +1,111 @@
-import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Alert,
+  AlertIcon,
+  Box,
+  Button,
+  FormControl,
+  FormLabel,
+  Input,
+  SimpleGrid,
+  Stack,
+  Text,
+} from "@chakra-ui/react";
+import PageShell from "../components/PageShell";
 import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
-import {
-  Box,
-  Heading,
-  Input,
-  Button,
-  VStack,
-  FormControl,
-  FormLabel,
-  Container,
-  Alert,
-  AlertIcon,
-} from "@chakra-ui/react";
-
 export default function Register() {
-  const location = useLocation();
   const navigate = useNavigate();
   const { login } = useAuth();
-
-  // state
-  const [email, setEmail] = useState(location.state?.email || "");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
+  const [userName, setUserName] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const message = location.state?.message;
+  const [error, setError] = useState("");
 
   const handleRegister = async () => {
     setLoading(true);
+    setError("");
 
     try {
       const data = await apiFetch("/auth/register", "POST", {
         email,
         password,
-        name,
+        user_name: userName,
         phone,
       });
-
       login(data);
-      navigate("/");
+      navigate("/", { replace: true });
     } catch (e) {
-      alert(e.message || "登録失敗");
+      setError(e.message || "新規登録に失敗しました。入力内容をご確認ください。");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Container centerContent>
-      <Box
-        w="100%"
-        maxW="400px"
-        p={6}
-        borderWidth="1px"
-        borderRadius="lg"
-        boxShadow="md"
-      >
-        <Heading mb={6} textAlign="center">
-          新規登録
-        </Heading>
+    <PageShell
+      title="新規登録"
+      subtitle="はじめて利用する方はこちらから登録してください。"
+      backTo="/login"
+    >
+      <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
+        <Box bg="white" borderRadius="24px" p={{ base: 5, md: 7 }} boxShadow="sm">
+          <Stack spacing={4}>
+            {error && (
+              <Alert status="error" borderRadius="md">
+                <AlertIcon />
+                <Text>{error}</Text>
+              </Alert>
+            )}
 
-        {/* メッセージ表示 */}
-        {message && (
-          <Alert status="warning" mb={4}>
-            <AlertIcon />
-            {message}
-          </Alert>
-        )}
+            <FormControl>
+              <FormLabel>お名前</FormLabel>
+              <Input value={userName} onChange={(e) => setUserName(e.target.value)} />
+            </FormControl>
 
-        <VStack spacing={4}>
-          <FormControl>
-            <FormLabel>名前</FormLabel>
-            <Input
-              size="lg"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </FormControl>
+            <FormControl>
+              <FormLabel>電話番号</FormLabel>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </FormControl>
 
-          <FormControl>
-            <FormLabel>電話番号</FormLabel>
-            <Input
-              size="lg"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-            />
-          </FormControl>
+            <FormControl>
+              <FormLabel>メールアドレス</FormLabel>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </FormControl>
 
-          <FormControl>
-            <FormLabel>メールアドレス</FormLabel>
-            <Input
-              type="email"
-              size="lg"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </FormControl>
+            <FormControl>
+              <FormLabel>パスワード</FormLabel>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </FormControl>
 
-          <FormControl>
-            <FormLabel>パスワード</FormLabel>
-            <Input
-              type="password"
-              size="lg"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </FormControl>
+            <Button colorScheme="teal" onClick={handleRegister} isLoading={loading}>
+              登録して予約を始める
+            </Button>
+          </Stack>
+        </Box>
 
-          <Button
-            colorScheme="teal"
-            size="lg"
-            w="100%"
-            onClick={handleRegister}
-            isLoading={loading}
-          >
-            登録する
-          </Button>
-
-          <Button
-            variant="link"
-            onClick={() => navigate("/login")}
-          >
-            ログインに戻る
-          </Button>
-        </VStack>
-      </Box>
-    </Container>
+        <Box bg="white" borderRadius="24px" p={{ base: 5, md: 7 }} boxShadow="sm">
+          <Stack spacing={4}>
+            <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="800">
+              登録後にできること
+            </Text>
+            <Text fontSize="lg">・診療科ごとの空き時間確認</Text>
+            <Text fontSize="lg">・予約の登録、変更、削除</Text>
+            <Text fontSize="lg">・予約内容の確認</Text>
+            <Button variant="outline" onClick={() => navigate("/login")}>
+              すでに登録済みの方はこちら
+            </Button>
+          </Stack>
+        </Box>
+      </SimpleGrid>
+    </PageShell>
   );
 }

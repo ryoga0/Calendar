@@ -4,9 +4,9 @@ from app.schemas.user import UserOut
 
 
 class RegisterRequest(BaseModel):
-    email: str
-    password: str
-    name: str
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    user_name: str = Field(min_length=1, max_length=100)
     phone: str | None = None
 
 

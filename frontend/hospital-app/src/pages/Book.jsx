@@ -1,181 +1,162 @@
-import { useParams } from "react-router-dom";
-import { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
+import {
+  Alert,
+  AlertIcon,
+  Box,
+  Button,
+  Grid,
+  GridItem,
+  Heading,
+  SimpleGrid,
+  Stack,
+  Text,
+} from "@chakra-ui/react";
+import { LoadingButtonGrid } from "../components/LoadingState";
+import PageShell from "../components/PageShell";
 import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-
-import {
-  Box,
-  Heading,
-  Text,
-  Button,
-  SimpleGrid,
-  Container,
-  Flex,
-} from "@chakra-ui/react";
+import { dayPickerFormatters, dayPickerLocale } from "../utils/dayPickerLocale";
+import { buildLocalDateTime, toDateInputValue } from "../utils/dateTime";
 
 export default function Book() {
-  const { id } = useParams();
+  const { departmentId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { token } = useAuth();
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [availability, setAvailability] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [submittingTime, setSubmittingTime] = useState("");
+  const [error, setError] = useState("");
 
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [loadingTime, setLoadingTime] = useState(null);
-  const [reservedTimes, setReservedTimes] = useState([]); // ←追加
-
-  const defaultTimes = [
-    "09:00",
-    "10:00",
-    "11:00",
-    "13:00",
-    "14:00",
-    "15:00",
-  ];
-
-  // 予約済み時間を取得
   useEffect(() => {
-    if (!selectedDate) return;
+    const dateParam = toDateInputValue(selectedDate);
+    setLoading(true);
+    setError("");
 
-    const fetchReservations = async () => {
-      try {
-        const dateStr = selectedDate.toISOString().split("T")[0];
+    apiFetch(`/availability?department_id=${departmentId}&date=${dateParam}`, "GET", null, token)
+      .then((res) => setAvailability(res.items))
+      .catch((e) => {
+        setAvailability([]);
+        setError(e.message || "予約可能時間の取得に失敗しました。");
+      })
+      .finally(() => setLoading(false));
+  }, [departmentId, selectedDate, token]);
 
-        const res = await apiFetch(
-          `/appointments?date=${dateStr}&department_id=${id}`,
-          "GET",
-          null,
-          token
-        );
-
-        const times = (res.items || res).map((a) => {
-          const d = new Date(a.start_at);
-          return `${String(d.getHours()).padStart(2, "0")}:${String(
-            d.getMinutes()
-          ).padStart(2, "0")}`;
-        });
-
-        setReservedTimes(times);
-      } catch (e) {
-        console.error(e);
-      }
-    };
-
-    fetchReservations();
-  }, [selectedDate, id]);
+  const allUnavailable = useMemo(
+    () => availability.length > 0 && availability.every((item) => !item.available),
+    [availability]
+  );
 
   const handleReserve = async (time) => {
-    if (!selectedDate) return;
-
-    setLoadingTime(time);
-
-    const datetime = new Date(selectedDate);
-    const [hour, minute] = time.split(":").map(Number);
-
-    datetime.setHours(hour, minute, 0, 0);
-
-    const localDateTime = `${datetime.getFullYear()}-${String(
-      datetime.getMonth() + 1
-    ).padStart(2, "0")}-${String(datetime.getDate()).padStart(
-      2,
-      "0"
-    )}T${String(hour).padStart(2, "0")}:${String(minute).padStart(
-      2,
-      "0"
-    )}:00`;
+    setSubmittingTime(time);
+    setError("");
 
     try {
       await apiFetch(
         "/appointments",
         "POST",
         {
-          department_id: id,
-          start_at: localDateTime,
+          department_id: departmentId,
+          start_at: buildLocalDateTime(selectedDate, time),
         },
         token
       );
-
-      alert(`予約しました: ${localDateTime}`);
-
-      // 再取得（画面更新）
-      setSelectedDate(new Date(selectedDate));
+      navigate("/appointments", {
+        state: { message: "予約が完了しました。" },
+      });
     } catch (e) {
-      alert(e.message || "予約失敗");
+      setError(e.message || "予約に失敗しました。");
     } finally {
-      setLoadingTime(null);
+      setSubmittingTime("");
     }
   };
 
   return (
-    <Container maxW="container.lg" py={6}>
-      <Heading mb={4}>予約</Heading>
-      <Text mb={6}>診療科: {id}</Text>
+    <PageShell
+      title="新しい予約"
+      subtitle={`${location.state?.departmentName || "診療科"}の予約可能時間を確認して選択してください。`}
+    >
+      {error && (
+        <Alert status="error" mb={4} borderRadius="md">
+          <AlertIcon />
+          <Text>{error}</Text>
+        </Alert>
+      )}
 
-      {/* レイアウト */}
-      <Flex
-        justify={selectedDate ? "flex-start" : "center"}
-        align="flex-start"
-        gap={10}
-        minH="400px"
-        transition="all 0.4s ease"
-      >
-        {/* カレンダー */}
-        <Box
-          p={6}
-          borderWidth="1px"
-          borderRadius="lg"
-          boxShadow="md"
-          minW="300px"
-          transition="all 0.4s ease"
-        >
-          <DayPicker
-            mode="single"
-            selected={selectedDate}
-            onSelect={setSelectedDate}
-            styles={{
-              caption: { fontSize: "1.5rem" },
-              head_cell: { fontSize: "1.1rem" },
-              cell: { padding: "10px" },
-              day: {
-                width: "48px",
-                height: "48px",
-                fontSize: "1.1rem",
-              },
-            }}
-          />
-        </Box>
-
-        {/* 時間（右に出る） */}
-        {selectedDate && (
-          <Box
-            flex="1"
-            minW="320px"
-            transition="all 0.4s ease"
-          >
+      <Grid templateColumns={{ base: "1fr", lg: "360px 1fr" }} gap={6}>
+        <GridItem>
+          <Box bg="white" borderRadius="24px" p={5} boxShadow="sm">
             <Heading size="md" mb={4}>
-              {selectedDate.toLocaleDateString()} の予約
+              日付を選択
             </Heading>
-
-            <SimpleGrid columns={3} spacing={4}>
-              {defaultTimes.map((time) => {
-                const isReserved = reservedTimes.includes(time);
-
-                return (
-                  <Button
-                    key={time}
-                    size="lg"
-                    colorScheme={isReserved ? "gray" : "teal"}
-                    onClick={() => handleReserve(time)}
-                    isLoading={loadingTime === time}
-                    isDisabled={isReserved} // ←押せない
-                  >
-                    {isReserved ? `${time} 満` : time}
-                  </Button>
-                );
-              })}
-            </SimpleGrid>
+            <Box className="calendar-picker">
+              <DayPicker
+                mode="single"
+                selected={selectedDate}
+                onSelect={(value) => value && setSelectedDate(value)}
+                disabled={{ before: new Date() }}
+                locale={dayPickerLocale}
+                formatters={dayPickerFormatters}
+                lang="ja"
+              />
+            </Box>
           </Box>
-        )}
-      </Flex>
-    </Container>
+        </GridItem>
+
+        <GridItem>
+          <Box bg="white" borderRadius="24px" p={{ base: 5, md: 7 }} boxShadow="sm" minH="420px">
+            <Stack spacing={5}>
+              <Heading size="md">
+                {selectedDate.toLocaleDateString()} の予約可能時間
+              </Heading>
+
+              {loading ? (
+                <LoadingButtonGrid />
+              ) : availability.length === 0 ? (
+                <Alert status="warning" borderRadius="md">
+                  <AlertIcon />
+                  <Text>この日は予約枠がありません。別の日を選択してください。</Text>
+                </Alert>
+              ) : (
+                <>
+                  {allUnavailable && (
+                    <Alert status="warning" borderRadius="md">
+                      <AlertIcon />
+                      <Text>
+                        この日はすべて埋まっています。別の日を選ぶと、他の日の空き状況を確認できます。
+                      </Text>
+                    </Alert>
+                  )}
+
+                  <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
+                    {availability.map((item) => (
+                      <Button
+                        key={item.time}
+                        h="72px"
+                        justifyContent="space-between"
+                        colorScheme={item.available ? "teal" : "gray"}
+                        variant={item.available ? "solid" : "outline"}
+                        isDisabled={!item.available}
+                        isLoading={submittingTime === item.time}
+                        onClick={() => handleReserve(item.time)}
+                      >
+                        <Text fontSize="lg" fontWeight="800">
+                          {item.time}
+                        </Text>
+                        <Text fontSize="sm">{item.available ? "予約する" : item.reason}</Text>
+                      </Button>
+                    ))}
+                  </SimpleGrid>
+                </>
+              )}
+            </Stack>
+          </Box>
+        </GridItem>
+      </Grid>
+    </PageShell>
   );
 }

@@ -28,10 +28,8 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)) -> TokenRespo
         id=str(uuid.uuid4()),
         email=body.email,
         password_hash=hash_password(body.password),
-
-        name=body.name,
+        user_name=body.user_name,
         phone=body.phone,
-
         created_at=now,
         updated_at=now,
     )
