@@ -11,7 +11,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import PageShell from "../components/PageShell";
-import { apiFetch } from "../api/client";
+import { updateCurrentUser } from "../api/userApi";
 import { useAuth } from "../auth/AuthContext";
 
 export default function Profile() {
@@ -36,12 +36,7 @@ export default function Profile() {
     setError("");
 
     try {
-      const updated = await apiFetch(
-        "/users/me",
-        "PATCH",
-        { user_name: userName, phone },
-        token
-      );
+      const updated = await updateCurrentUser({ token, userName, phone });
       refreshUser(updated);
       setMessage("プロフィールを更新しました。");
     } catch (e) {

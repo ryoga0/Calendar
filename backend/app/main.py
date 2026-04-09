@@ -1,15 +1,22 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from app.routers import availability, departments, appointments, auth, users
+
 from app.database import init_db
 from app.exceptions import AppError
+from app.routers import appointments, auth, availability, departments, users
 
-app = FastAPI()
 
-@app.on_event("startup")
-def startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     init_db()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
 
 @app.exception_handler(AppError)
 def app_exception_handler(request, exc: AppError):
@@ -20,6 +27,7 @@ def app_exception_handler(request, exc: AppError):
             "message": exc.message,
         },
     )
+
 
 app.add_middleware(
     CORSMiddleware,

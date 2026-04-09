@@ -14,9 +14,10 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import { fetchAppointment, updateAppointment } from "../api/appointmentApi";
+import { fetchAvailability } from "../api/availabilityApi";
 import { CalendarLoadingCard, LoadingButtonGrid, LoadingCard } from "../components/LoadingState";
 import PageShell from "../components/PageShell";
-import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { dayPickerFormatters, dayPickerLocale } from "../utils/dayPickerLocale";
 import { buildLocalDateTime, formatDateTime, toDateInputValue } from "../utils/dateTime";
@@ -37,7 +38,7 @@ export default function AppointmentEdit() {
     setPageLoading(true);
     setError("");
 
-    apiFetch(`/appointments/${appointmentId}`, "GET", null, token)
+    fetchAppointment({ appointmentId, token })
       .then((res) => {
         setAppointment(res);
         setSelectedDate(new Date(res.start_at));
@@ -55,12 +56,12 @@ export default function AppointmentEdit() {
     setError("");
 
     const dateParam = toDateInputValue(selectedDate);
-    apiFetch(
-      `/availability?department_id=${appointment.department_id}&date=${dateParam}&exclude_appointment_id=${appointment.id}`,
-      "GET",
-      null,
-      token
-    )
+    fetchAvailability({
+      departmentId: appointment.department_id,
+      date: dateParam,
+      excludeAppointmentId: appointment.id,
+      token,
+    })
       .then((res) => setAvailability(res.items))
       .catch((e) => setError(e.message || "予約可能時間の取得に失敗しました。"))
       .finally(() => setAvailabilityLoading(false));
@@ -80,12 +81,11 @@ export default function AppointmentEdit() {
     setError("");
 
     try {
-      await apiFetch(
-        `/appointments/${appointmentId}`,
-        "PATCH",
-        { start_at: buildLocalDateTime(selectedDate, time) },
-        token
-      );
+      await updateAppointment({
+        appointmentId,
+        startAt: buildLocalDateTime(selectedDate, time),
+        token,
+      });
       navigate(`/appointments/${appointmentId}`, {
         state: { message: "予約日時を変更しました。" },
         replace: true,
@@ -118,24 +118,24 @@ export default function AppointmentEdit() {
         </Grid>
       ) : appointment ? (
         <Grid templateColumns={{ base: "1fr", lg: "360px 1fr" }} gap={6}>
-        <GridItem>
-          <Box bg="white" borderRadius="24px" p={5} boxShadow="sm">
-            <Heading size="md" mb={4}>
-              日付を選択
-            </Heading>
-            <Box className="calendar-picker">
-              <DayPicker
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                disabled={{ before: new Date() }}
-                locale={dayPickerLocale}
-                formatters={dayPickerFormatters}
-                lang="ja"
-              />
+          <GridItem>
+            <Box bg="white" borderRadius="24px" p={5} boxShadow="sm">
+              <Heading size="md" mb={4}>
+                日付を選択
+              </Heading>
+              <Box className="calendar-picker">
+                <DayPicker
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  disabled={{ before: new Date() }}
+                  locale={dayPickerLocale}
+                  formatters={dayPickerFormatters}
+                  lang="ja"
+                />
+              </Box>
             </Box>
-          </Box>
-        </GridItem>
+          </GridItem>
 
           <GridItem>
             <Box bg="white" borderRadius="24px" p={{ base: 5, md: 7 }} boxShadow="sm" minH="460px">

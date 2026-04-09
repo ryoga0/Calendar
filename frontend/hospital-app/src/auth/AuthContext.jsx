@@ -1,60 +1,74 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { apiFetch } from "../api/client";
+import { ensureFirebaseSessionPersistence } from "../firebase/client";
+import { subscribeAuthState } from "../firebase/patientPortal";
+import { logoutUser } from "../api/authApi";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(sessionStorage.getItem("token"));
+  const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(Boolean(sessionStorage.getItem("token")));
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) {
-      setUser(null);
-      setIsLoading(false);
-      return;
-    }
-
     let active = true;
-    setIsLoading(true);
+    let unsubscribe = () => {};
 
-    apiFetch("/users/me", "GET", null, token)
-      .then((me) => {
-        if (active) {
-          setUser(me);
-        }
+    ensureFirebaseSessionPersistence()
+      .then(() => {
+        unsubscribe = subscribeAuthState({
+          onSignedIn: (session) => {
+            if (!active) {
+              return;
+            }
+            setToken(session.access_token);
+            setUser(session.user);
+            setIsLoading(false);
+          },
+          onSignedOut: () => {
+            if (!active) {
+              return;
+            }
+            setToken(null);
+            setUser(null);
+            setIsLoading(false);
+          },
+          onError: () => {
+            if (!active) {
+              return;
+            }
+            setToken(null);
+            setUser(null);
+            setIsLoading(false);
+          },
+        });
       })
       .catch(() => {
         if (!active) {
           return;
         }
-        sessionStorage.removeItem("token");
         setToken(null);
         setUser(null);
-      })
-      .finally(() => {
-        if (active) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       });
 
     return () => {
       active = false;
+      unsubscribe();
     };
-  }, [token]);
+  }, []);
 
-  const login = (data) => {
-    setToken(data.access_token);
-    setUser(data.user);
+  const login = (session) => {
+    setToken(session.access_token);
+    setUser(session.user);
     setIsLoading(false);
-    sessionStorage.setItem("token", data.access_token);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await logoutUser();
     setToken(null);
     setUser(null);
     setIsLoading(false);
-    sessionStorage.removeItem("token");
   };
 
   const refreshUser = (nextUser) => {

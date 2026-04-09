@@ -1,17 +1,25 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import Department
+from app.deps import get_department_repository
+from app.repositories import DepartmentRepository
 from app.schemas.department import DepartmentListResponse, DepartmentOut
 
 router = APIRouter(prefix="/departments", tags=["departments"])
 
 
 @router.get("", response_model=DepartmentListResponse)
-def list_departments(db: Session = Depends(get_db)) -> DepartmentListResponse:
-    rows = db.scalars(
-        select(Department).where(Department.is_active.is_(True)).order_by(Department.sort_order.asc())
-    ).all()
-    return DepartmentListResponse(items=[DepartmentOut.model_validate(r) for r in rows])
+def list_departments(
+    departments: DepartmentRepository = Depends(get_department_repository),
+) -> DepartmentListResponse:
+    rows = departments.list_active()
+    return DepartmentListResponse(
+        items=[
+            DepartmentOut(
+                id=row.id,
+                name=row.name,
+                sort_order=row.sort_order,
+                is_active=row.is_active,
+            )
+            for row in rows
+        ]
+    )

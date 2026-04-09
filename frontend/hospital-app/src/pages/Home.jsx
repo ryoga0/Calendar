@@ -15,9 +15,10 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import { fetchAppointments } from "../api/appointmentApi";
+import { fetchDepartments } from "../api/departmentApi";
 import { LoadingButtonGrid, LoadingCard } from "../components/LoadingState";
 import PageShell from "../components/PageShell";
-import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { formatDateTime } from "../utils/dateTime";
 
@@ -56,8 +57,8 @@ export default function Home() {
     setError("");
 
     Promise.all([
-      apiFetch("/departments", "GET", null, token),
-      apiFetch("/appointments", "GET", null, token),
+      fetchDepartments(token),
+      fetchAppointments(token),
     ])
       .then(([departmentRes, appointmentRes]) => {
         setDepartments(departmentRes.items);

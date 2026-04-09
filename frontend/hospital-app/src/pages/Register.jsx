@@ -13,7 +13,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import PageShell from "../components/PageShell";
-import { apiFetch } from "../api/client";
+import { registerUser } from "../api/authApi";
 import { useAuth } from "../auth/AuthContext";
 
 export default function Register() {
@@ -31,10 +31,10 @@ export default function Register() {
     setError("");
 
     try {
-      const data = await apiFetch("/auth/register", "POST", {
+      const data = await registerUser({
         email,
         password,
-        user_name: userName,
+        userName,
         phone,
       });
       login(data);

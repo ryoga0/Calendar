@@ -20,6 +20,9 @@ htmlcov/
 .nox/
 .env
 .env.*
+!.env.example
+!backend/.env.example
+!frontend/hospital-app/.env.example
 backend/venv/
 frontend/venv/
 
@@ -45,3 +48,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Firebase
+.firebase/
+firebase-debug.log
+service-account*.json
+*-firebase-adminsdk-*.json

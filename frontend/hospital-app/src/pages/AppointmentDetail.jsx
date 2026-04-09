@@ -10,9 +10,9 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import { deleteAppointment, fetchAppointment } from "../api/appointmentApi";
 import { LoadingCard } from "../components/LoadingState";
 import PageShell from "../components/PageShell";
-import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { formatDateTime } from "../utils/dateTime";
 
@@ -30,7 +30,7 @@ export default function AppointmentDetail() {
     setLoading(true);
     setError("");
 
-    apiFetch(`/appointments/${appointmentId}`, "GET", null, token)
+    fetchAppointment({ appointmentId, token })
       .then((res) => setAppointment(res))
       .catch((e) => setError(e.message || "予約詳細の取得に失敗しました。"))
       .finally(() => setLoading(false));
@@ -45,7 +45,7 @@ export default function AppointmentDetail() {
     setError("");
 
     try {
-      await apiFetch(`/appointments/${appointmentId}`, "DELETE", null, token);
+      await deleteAppointment({ appointmentId, token });
       navigate("/appointments", {
         state: { message: "予約をキャンセルしました。" },
         replace: true,

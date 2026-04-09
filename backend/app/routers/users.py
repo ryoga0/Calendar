@@ -1,32 +1,37 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.deps import get_current_user
-from app.models import User
+from app.deps import get_current_user, get_user_repository
+from app.domain import UserRecord
+from app.repositories import UserRepository
 from app.schemas.user import UserOut, UserUpdate
-from app.utils.timeutil import utcnow
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/me", response_model=UserOut)
-def read_me(user: User = Depends(get_current_user)) -> UserOut:
-    return UserOut.model_validate(user)
+def read_me(user: UserRecord = Depends(get_current_user)) -> UserOut:
+    return UserOut(
+        id=user.id,
+        email=user.email,
+        user_name=user.user_name,
+        phone=user.phone,
+    )
 
 
 @router.patch("/me", response_model=UserOut)
 def update_me(
     body: UserUpdate,
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    user: UserRecord = Depends(get_current_user),
+    users: UserRepository = Depends(get_user_repository),
 ) -> UserOut:
-    if body.user_name is not None:
-        user.user_name = body.user_name
-    if body.phone is not None:
-        user.phone = body.phone
-    user.updated_at = utcnow()
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return UserOut.model_validate(user)
+    updated = users.update_profile(
+        user.id,
+        user_name=body.user_name,
+        phone=body.phone,
+    )
+    return UserOut(
+        id=updated.id,
+        email=updated.email,
+        user_name=updated.user_name,
+        phone=updated.phone,
+    )

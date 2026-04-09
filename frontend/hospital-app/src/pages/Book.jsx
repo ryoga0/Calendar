@@ -14,9 +14,10 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import { createAppointment } from "../api/appointmentApi";
+import { fetchAvailability } from "../api/availabilityApi";
 import { LoadingButtonGrid } from "../components/LoadingState";
 import PageShell from "../components/PageShell";
-import { apiFetch } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { dayPickerFormatters, dayPickerLocale } from "../utils/dayPickerLocale";
 import { buildLocalDateTime, toDateInputValue } from "../utils/dateTime";
@@ -37,7 +38,7 @@ export default function Book() {
     setLoading(true);
     setError("");
 
-    apiFetch(`/availability?department_id=${departmentId}&date=${dateParam}`, "GET", null, token)
+    fetchAvailability({ departmentId, date: dateParam, token })
       .then((res) => setAvailability(res.items))
       .catch((e) => {
         setAvailability([]);
@@ -56,15 +57,11 @@ export default function Book() {
     setError("");
 
     try {
-      await apiFetch(
-        "/appointments",
-        "POST",
-        {
-          department_id: departmentId,
-          start_at: buildLocalDateTime(selectedDate, time),
-        },
-        token
-      );
+      await createAppointment({
+        departmentId,
+        startAt: buildLocalDateTime(selectedDate, time),
+        token,
+      });
       navigate("/appointments", {
         state: { message: "予約が完了しました。" },
       });

@@ -24,13 +24,21 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
-    from app import models  # noqa: F401
-
-    Base.metadata.create_all(bind=engine)
-    _create_partial_unique_index()
     from app.services.seed import seed_if_empty
 
-    seed_if_empty(SessionLocal)
+    if settings.data_provider == "sqlalchemy":
+        from app import models  # noqa: F401
+
+        Base.metadata.create_all(bind=engine)
+        _create_partial_unique_index()
+        seed_if_empty(SessionLocal)
+        return
+
+    if settings.data_provider == "firebase":
+        seed_if_empty()
+        return
+
+    raise RuntimeError(f"Unsupported data_provider: {settings.data_provider}")
 
 
 def _create_partial_unique_index() -> None:

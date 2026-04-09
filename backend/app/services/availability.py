@@ -3,12 +3,9 @@ from __future__ import annotations
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from app.config import settings
 from app.exceptions import AppError
-from app.models import Appointment, Department
+from app.repositories import AppointmentRepository, DepartmentRepository
 from app.schemas.availability import AvailabilityItemOut, AvailabilityResponse
 
 TZ = ZoneInfo(settings.timezone)
@@ -41,34 +38,26 @@ def build_local_start_at(target_date: date, time_str: str) -> datetime:
 
 
 def build_daily_availability(
-    db: Session,
+    departments: DepartmentRepository,
+    appointments: AppointmentRepository,
     department_id: str,
     target_date: date,
     exclude_appointment_id: str | None = None,
 ) -> AvailabilityResponse:
-    department = db.get(Department, department_id)
+    department = departments.get_by_id(department_id)
     if not department or not department.is_active:
         raise AppError("NOT_FOUND", "診療科が見つかりません。", 404)
 
     candidate_times = schedule_times_for_date(target_date)
-    day_start = datetime.combine(target_date, time.min)
-    day_end = day_start + timedelta(days=1)
-
-    rows = db.scalars(
-        select(Appointment)
-        .where(
-            Appointment.department_id == department_id,
-            Appointment.status == "confirmed",
-            Appointment.start_at >= day_start,
-            Appointment.start_at < day_end,
-        )
-        .order_by(Appointment.start_at.asc())
-    ).all()
+    rows = appointments.list_confirmed_for_department_on_date(
+        department_id,
+        target_date,
+        exclude_appointment_id=exclude_appointment_id,
+    )
 
     booked = {
         normalize_local_datetime(appt.start_at)
         for appt in rows
-        if appt.id != exclude_appointment_id
     }
 
     now = hospital_now()
@@ -116,14 +105,16 @@ def build_daily_availability(
 
 
 def ensure_reservable_datetime(
-    db: Session,
+    departments: DepartmentRepository,
+    appointments: AppointmentRepository,
     department_id: str,
     requested_start_at: datetime,
     exclude_appointment_id: str | None = None,
 ) -> datetime:
     normalized_start_at = normalize_local_datetime(requested_start_at)
     availability = build_daily_availability(
-        db=db,
+        departments=departments,
+        appointments=appointments,
         department_id=department_id,
         target_date=normalized_start_at.date(),
         exclude_appointment_id=exclude_appointment_id,

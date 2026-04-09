@@ -13,7 +13,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import PageShell from "../components/PageShell";
-import { apiFetch } from "../api/client";
+import { loginUser } from "../api/authApi";
 import { useAuth } from "../auth/AuthContext";
 
 export default function Login() {
@@ -30,7 +30,7 @@ export default function Login() {
     setError("");
 
     try {
-      const data = await apiFetch("/auth/login", "POST", { email, password });
+      const data = await loginUser({ email, password });
       login(data);
       navigate(location.state?.from || "/", { replace: true });
     } catch (e) {

@@ -5,12 +5,17 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import Book from "./Book";
 
-const apiFetchMock = vi.fn();
+const fetchAvailabilityMock = vi.fn();
+const createAppointmentMock = vi.fn();
 const useAuthMock = vi.fn();
 const navigateMock = vi.fn();
 
-vi.mock("../api/client", () => ({
-  apiFetch: (...args) => apiFetchMock(...args),
+vi.mock("../api/availabilityApi", () => ({
+  fetchAvailability: (...args) => fetchAvailabilityMock(...args),
+}));
+
+vi.mock("../api/appointmentApi", () => ({
+  createAppointment: (...args) => createAppointmentMock(...args),
 }));
 
 vi.mock("../auth/AuthContext", () => ({
@@ -27,7 +32,8 @@ vi.mock("react-router-dom", async () => {
 
 describe("Book", () => {
   beforeEach(() => {
-    apiFetchMock.mockReset();
+    fetchAvailabilityMock.mockReset();
+    createAppointmentMock.mockReset();
     useAuthMock.mockReset();
     navigateMock.mockReset();
     useAuthMock.mockReturnValue({ token: "token" });
@@ -38,14 +44,13 @@ describe("Book", () => {
   });
 
   it("空き時間を表示し、予約操作を実行できる", async () => {
-    apiFetchMock
-      .mockResolvedValueOnce({
-        items: [
-          { time: "09:00", start_at: "2026-04-10T09:00:00", available: true, reason: null },
-          { time: "10:00", start_at: "2026-04-10T10:00:00", available: false, reason: "満員" },
-        ],
-      })
-      .mockResolvedValueOnce({ id: "appt-1" });
+    fetchAvailabilityMock.mockResolvedValueOnce({
+      items: [
+        { time: "09:00", start_at: "2026-04-10T09:00:00", available: true, reason: null },
+        { time: "10:00", start_at: "2026-04-10T10:00:00", available: false, reason: "満員" },
+      ],
+    });
+    createAppointmentMock.mockResolvedValueOnce({ id: "appt-1" });
 
     render(
       <MemoryRouter
@@ -68,18 +73,15 @@ describe("Book", () => {
     await userEvent.click(screen.getByRole("button", { name: /09:00/ }));
 
     await waitFor(() => {
-      expect(apiFetchMock).toHaveBeenNthCalledWith(
-        2,
-        "/appointments",
-        "POST",
+      expect(createAppointmentMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          department_id: "dep-1",
-        }),
-        "token"
+          departmentId: "dep-1",
+          token: "token",
+        })
       );
     });
 
-    expect(apiFetchMock.mock.calls[1][2].start_at).toMatch(/T09:00:00$/);
+    expect(createAppointmentMock.mock.calls[0][0].startAt).toMatch(/T09:00:00$/);
 
     expect(navigateMock).toHaveBeenCalledWith("/appointments", {
       state: { message: "予約が完了しました。" },
@@ -87,7 +89,7 @@ describe("Book", () => {
   });
 
   it("候補がすべて予約不可のときは別日を促す", async () => {
-    apiFetchMock.mockResolvedValueOnce({
+    fetchAvailabilityMock.mockResolvedValueOnce({
       items: [
         { time: "09:00", start_at: "2026-04-10T09:00:00", available: false, reason: "満員" },
         { time: "10:00", start_at: "2026-04-10T10:00:00", available: false, reason: "受付終了" },

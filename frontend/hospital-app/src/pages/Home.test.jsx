@@ -10,8 +10,12 @@ vi.mock("../auth/AuthContext", () => ({
   useAuth: () => useAuthMock(),
 }));
 
-vi.mock("../api/client", () => ({
-  apiFetch: vi.fn(),
+vi.mock("../api/departmentApi", () => ({
+  fetchDepartments: vi.fn(),
+}));
+
+vi.mock("../api/appointmentApi", () => ({
+  fetchAppointments: vi.fn(),
 }));
 
 describe("Home", () => {
