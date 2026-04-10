@@ -1,8 +1,9 @@
 import { initializeApp, getApp, getApps } from "firebase/app";
 import { browserSessionPersistence, getAuth, setPersistence } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, initializeFirestore } from "firebase/firestore/lite";
 
 let firebaseApp = null;
+let firestoreDb = null;
 let persistencePromise = null;
 
 function requireEnv(name) {
@@ -38,7 +39,19 @@ export function getFirebaseAuth() {
 }
 
 export function getFirestoreDb() {
-  return getFirestore(getFirebaseApp());
+  if (firestoreDb) {
+    return firestoreDb;
+  }
+
+  const app = getFirebaseApp();
+
+  try {
+    firestoreDb = initializeFirestore(app, {});
+  } catch {
+    firestoreDb = getFirestore(app);
+  }
+
+  return firestoreDb;
 }
 
 export function ensureFirebaseSessionPersistence() {

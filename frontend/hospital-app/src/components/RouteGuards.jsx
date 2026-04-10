@@ -58,3 +58,19 @@ export function PublicOnlyRoute({ children }) {
   }
   return children;
 }
+
+export function AdminRoute({ children }) {
+  const { token, user, isLoading } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+  if (!token) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+  if (!user?.is_admin) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}

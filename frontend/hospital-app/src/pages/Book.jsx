@@ -29,6 +29,7 @@ export default function Book() {
   const { token } = useAuth();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [availability, setAvailability] = useState([]);
+  const [closedReason, setClosedReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [submittingTime, setSubmittingTime] = useState("");
   const [error, setError] = useState("");
@@ -37,11 +38,16 @@ export default function Book() {
     const dateParam = toDateInputValue(selectedDate);
     setLoading(true);
     setError("");
+    setClosedReason("");
 
     fetchAvailability({ departmentId, date: dateParam, token })
-      .then((res) => setAvailability(res.items))
+      .then((res) => {
+        setAvailability(res.items);
+        setClosedReason(res.closed_reason || "");
+      })
       .catch((e) => {
         setAvailability([]);
+        setClosedReason("");
         setError(e.message || "予約可能時間の取得に失敗しました。");
       })
       .finally(() => setLoading(false));
@@ -113,6 +119,11 @@ export default function Book() {
 
               {loading ? (
                 <LoadingButtonGrid />
+              ) : closedReason ? (
+                <Alert status="warning" borderRadius="md">
+                  <AlertIcon />
+                  <Text>{`この日は予約を受け付けていません。${closedReason}`}</Text>
+                </Alert>
               ) : availability.length === 0 ? (
                 <Alert status="warning" borderRadius="md">
                   <AlertIcon />
@@ -124,7 +135,9 @@ export default function Book() {
                     <Alert status="warning" borderRadius="md">
                       <AlertIcon />
                       <Text>
-                        この日はすべて埋まっています。別の日を選ぶと、他の日の空き状況を確認できます。
+                        {closedReason
+                          ? `この日は予約を受け付けていません。${closedReason}`
+                          : "この日はすべて埋まっています。別の日を選ぶと、他の日の空き状況を確認できます。"}
                       </Text>
                     </Alert>
                   )}

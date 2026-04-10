@@ -9,40 +9,55 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
     function isUserScopedLock(lockId) {
       return signedIn() && lockId.matches('^' + request.auth.uid + '_.*$');
     }
 
-    match /departments/{departmentId} {
-      allow read: if true;
+    match /admins/{adminId} {
+      allow read: if signedIn() && request.auth.uid == adminId || isAdmin();
       allow write: if false;
     }
 
+    match /departments/{departmentId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /department_closures/{closureId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /users/{userId} {
-      allow read, create, update: if isOwner(userId);
+      allow read: if isOwner(userId) || isAdmin();
+      allow create, update: if isOwner(userId);
       allow delete: if false;
 
       match /appointments/{appointmentId} {
-        allow read: if isOwner(userId);
+        allow read: if isOwner(userId) || isAdmin();
         allow create, update: if isOwner(userId) && request.resource.data.user_id == userId;
-        allow delete: if isOwner(userId);
+        allow delete: if isOwner(userId) || isAdmin();
       }
     }
 
     match /user_department_locks/{lockId} {
-      allow read, delete: if isUserScopedLock(lockId);
-      allow create, update: if isUserScopedLock(lockId) && request.resource.data.user_id == request.auth.uid;
+      allow read, delete: if isUserScopedLock(lockId) || isAdmin();
+      allow create, update: if isAdmin() || isUserScopedLock(lockId) && request.resource.data.user_id == request.auth.uid;
     }
 
     match /user_slot_locks/{lockId} {
-      allow read, delete: if isUserScopedLock(lockId);
-      allow create, update: if isUserScopedLock(lockId) && request.resource.data.user_id == request.auth.uid;
+      allow read, delete: if isUserScopedLock(lockId) || isAdmin();
+      allow create, update: if isAdmin() || isUserScopedLock(lockId) && request.resource.data.user_id == request.auth.uid;
     }
 
     match /department_slot_locks/{lockId} {
       allow read: if true;
-      allow create, update: if signedIn() && request.resource.data.user_id == request.auth.uid;
-      allow delete: if signedIn() && resource.data.user_id == request.auth.uid;
+      allow create, update: if isAdmin() || signedIn() && request.resource.data.user_id == request.auth.uid;
+      allow delete: if isAdmin() || signedIn() && resource.data.user_id == request.auth.uid;
     }
   }
 }

@@ -2,7 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ProtectedRoute, PublicOnlyRoute } from "./RouteGuards";
+import { AdminRoute, ProtectedRoute, PublicOnlyRoute } from "./RouteGuards";
 
 const useAuthMock = vi.fn();
 
@@ -62,6 +62,57 @@ describe("RouteGuards", () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText("ホーム")).toBeInTheDocument();
+    expect((await screen.findAllByText("ホーム")).length).toBeGreaterThan(0);
+  });
+
+  it("管理者ではない利用者は管理画面に入れない", async () => {
+    useAuthMock.mockReturnValue({
+      token: "token",
+      user: { is_admin: false },
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/admin"]}>
+        <Routes>
+          <Route path="/" element={<div>ホーム</div>} />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <div>管理画面</div>
+              </AdminRoute>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect((await screen.findAllByText("ホーム")).length).toBeGreaterThan(0);
+  });
+
+  it("管理者は管理画面に入れる", async () => {
+    useAuthMock.mockReturnValue({
+      token: "token",
+      user: { is_admin: true },
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/admin"]}>
+        <Routes>
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <div>管理画面</div>
+              </AdminRoute>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("管理画面")).toBeInTheDocument();
   });
 });

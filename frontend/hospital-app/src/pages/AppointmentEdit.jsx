@@ -29,6 +29,7 @@ export default function AppointmentEdit() {
   const [appointment, setAppointment] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [availability, setAvailability] = useState([]);
+  const [closedReason, setClosedReason] = useState("");
   const [pageLoading, setPageLoading] = useState(true);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [submittingTime, setSubmittingTime] = useState("");
@@ -54,6 +55,7 @@ export default function AppointmentEdit() {
 
     setAvailabilityLoading(true);
     setError("");
+    setClosedReason("");
 
     const dateParam = toDateInputValue(selectedDate);
     fetchAvailability({
@@ -62,8 +64,14 @@ export default function AppointmentEdit() {
       excludeAppointmentId: appointment.id,
       token,
     })
-      .then((res) => setAvailability(res.items))
-      .catch((e) => setError(e.message || "予約可能時間の取得に失敗しました。"))
+      .then((res) => {
+        setAvailability(res.items);
+        setClosedReason(res.closed_reason || "");
+      })
+      .catch((e) => {
+        setClosedReason("");
+        setError(e.message || "予約可能時間の取得に失敗しました。");
+      })
       .finally(() => setAvailabilityLoading(false));
   }, [appointment, selectedDate, token]);
 
@@ -162,7 +170,12 @@ export default function AppointmentEdit() {
                       {selectedDate?.toLocaleDateString()} の予約可能時間
                     </Heading>
 
-                    {availability.length === 0 ? (
+                    {closedReason ? (
+                      <Alert status="warning" borderRadius="md">
+                        <AlertIcon />
+                        <Text>{`この日は予約を受け付けていません。${closedReason}`}</Text>
+                      </Alert>
+                    ) : availability.length === 0 ? (
                       <Alert status="warning" borderRadius="md">
                         <AlertIcon />
                         <Text>この日は予約枠がありません。別の日をお選びください。</Text>
@@ -173,7 +186,9 @@ export default function AppointmentEdit() {
                           <Alert status="warning" borderRadius="md">
                             <AlertIcon />
                             <Text>
-                              この日は空きがありません。別の日を選ぶと予約可能な時間を確認できます。
+                              {closedReason
+                                ? `この日は予約を受け付けていません。${closedReason}`
+                                : "この日は空きがありません。別の日を選ぶと予約可能な時間を確認できます。"}
                             </Text>
                           </Alert>
                         )}

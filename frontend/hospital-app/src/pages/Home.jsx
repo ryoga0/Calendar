@@ -142,6 +142,11 @@ export default function Home() {
       showBack={false}
       actions={
         <HStack spacing={3}>
+          {user?.is_admin && (
+            <Button colorScheme="orange" onClick={() => navigate("/admin")}>
+              管理者画面
+            </Button>
+          )}
           <Button variant="outline" onClick={() => navigate("/profile")}>
             プロフィール
           </Button>
@@ -195,6 +200,11 @@ export default function Home() {
                   <Button colorScheme="teal" onClick={() => navigate("/appointments")}>
                     予約一覧を見る
                   </Button>
+                  {user?.is_admin && (
+                    <Button colorScheme="orange" variant="outline" onClick={() => navigate("/admin")}>
+                      管理者画面を開く
+                    </Button>
+                  )}
                   <Button variant="outline" onClick={() => navigate("/profile")}>
                     プロフィールを確認する
                   </Button>

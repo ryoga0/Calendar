@@ -7,14 +7,17 @@ import {
 } from "firebase/auth";
 import {
   collection,
+  collectionGroup,
   doc,
+  deleteDoc,
   getDoc,
   getDocs,
   orderBy,
   query,
   runTransaction,
   setDoc,
-} from "firebase/firestore";
+  where,
+} from "firebase/firestore/lite";
 import { ensureFirebaseSessionPersistence, getFirebaseAuth, getFirestoreDb } from "./client";
 import {
   conflictError,
@@ -44,6 +47,10 @@ function departmentRef(db, departmentId) {
   return doc(db, "departments", departmentId);
 }
 
+function adminRef(db, userId) {
+  return doc(db, "admins", userId);
+}
+
 function userRef(db, userId) {
   return doc(db, "users", userId);
 }
@@ -68,19 +75,25 @@ function departmentSlotLockRef(db, departmentId, slotKey) {
   return doc(db, "department_slot_locks", `${departmentId}_${slotKey}`);
 }
 
-function toUserOut(userId, payload, authUser) {
+function departmentClosureRef(db, departmentId, dateValue) {
+  return doc(db, "department_closures", `${departmentId}_${normalizeDateValue(dateValue)}`);
+}
+
+function toUserOut(userId, payload, authUser, isAdmin = false) {
   return {
     id: userId,
     email: payload.email || authUser?.email || "",
     user_name: payload.user_name || authUser?.displayName || (authUser?.email || "").split("@")[0],
     phone: payload.phone || null,
+    is_admin: isAdmin,
   };
 }
 
-function toDepartmentOut(snapshot) {
-  const payload = snapshot.data() || {};
+function toDepartmentOut(snapshotOrId, maybePayload) {
+  const id = typeof snapshotOrId === "string" ? snapshotOrId : snapshotOrId.id;
+  const payload = maybePayload || snapshotOrId.data() || {};
   return {
-    id: snapshot.id,
+    id,
     name: payload.name || "",
     sort_order: Number(payload.sort_order || 0),
     is_active: Boolean(payload.is_active),
@@ -103,6 +116,32 @@ function toAppointmentOut(snapshotOrId, maybePayload) {
   };
 }
 
+function toClosureOut(snapshotOrId, maybePayload) {
+  const id = typeof snapshotOrId === "string" ? snapshotOrId : snapshotOrId.id;
+  const payload = maybePayload || snapshotOrId.data() || {};
+  return {
+    id,
+    department_id: payload.department_id || "",
+    department_name: payload.department_name || "",
+    date: payload.date || "",
+    reason: payload.reason || null,
+    created_by: payload.created_by || null,
+    created_at: payload.created_at || null,
+    updated_at: payload.updated_at || null,
+  };
+}
+
+function closureReasonLabel(reason) {
+  return reason?.trim() ? `休診日: ${reason.trim()}` : "休診日";
+}
+
+function nextDateValue(dateValue) {
+  const [year, month, day] = normalizeDateValue(dateValue).split("-").map(Number);
+  const next = new Date(year, month - 1, day);
+  next.setDate(next.getDate() + 1);
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-${String(next.getDate()).padStart(2, "0")}`;
+}
+
 async function requireSignedInUser() {
   await ensureFirebaseSessionPersistence();
   const authUser = getFirebaseAuth().currentUser;
@@ -112,10 +151,30 @@ async function requireSignedInUser() {
   return authUser;
 }
 
+async function isAdminUid(userId) {
+  const db = getFirestoreDb();
+  const snapshot = await getDoc(adminRef(db, userId));
+  return snapshot.exists();
+}
+
+async function requireAdminUser() {
+  const authUser = await requireSignedInUser();
+  const adminUser = await isAdminUid(authUser.uid);
+
+  if (!adminUser) {
+    throw unauthorizedError("管理者権限が必要です。");
+  }
+
+  return authUser;
+}
+
 async function ensureUserDocument(authUser, overrides = {}) {
   const db = getFirestoreDb();
   const ref = userRef(db, authUser.uid);
-  const snapshot = await getDoc(ref);
+  const [snapshot, adminSnapshot] = await Promise.all([
+    getDoc(ref),
+    getDoc(adminRef(db, authUser.uid)),
+  ]);
   const now = nowIsoString();
   const basePayload = snapshot.exists() ? snapshot.data() || {} : {};
   const userName =
@@ -137,10 +196,11 @@ async function ensureUserDocument(authUser, overrides = {}) {
   };
 
   await setDoc(ref, payload, { merge: true });
-  return toUserOut(authUser.uid, payload, authUser);
+  return toUserOut(authUser.uid, payload, authUser, adminSnapshot.exists());
 }
 
-async function getActiveDepartment(departmentId) {
+async function getDepartment(departmentId, options = {}) {
+  const { requireActive = true } = options;
   const db = getFirestoreDb();
   const snapshot = await getDoc(departmentRef(db, departmentId));
   if (!snapshot.exists()) {
@@ -148,7 +208,7 @@ async function getActiveDepartment(departmentId) {
   }
 
   const department = toDepartmentOut(snapshot);
-  if (!department.is_active) {
+  if (requireActive && !department.is_active) {
     throw notFoundError("診療科が見つかりません。");
   }
 
@@ -301,10 +361,13 @@ export async function fetchActiveDepartments() {
 
 export async function fetchDailyAvailability({ departmentId, date, excludeAppointmentId }) {
   try {
-    await getActiveDepartment(departmentId);
+    await getDepartment(departmentId);
     const db = getFirestoreDb();
     const dateValue = normalizeDateValue(date);
     const candidateTimes = scheduleTimesForDate(dateValue);
+    const closureSnapshot = await getDoc(departmentClosureRef(db, departmentId, dateValue));
+    const closurePayload = closureSnapshot.data() || {};
+    const closedReason = closureSnapshot.exists() ? closureReasonLabel(closurePayload.reason) : null;
     const lockSnapshots = await Promise.all(
       candidateTimes.map((timeValue) =>
         getDoc(departmentSlotLockRef(db, departmentId, buildSlotKey(dateValue, timeValue)))
@@ -317,6 +380,15 @@ export async function fetchDailyAvailability({ departmentId, date, excludeAppoin
       const lockSnapshot = lockSnapshots[index];
       const lockPayload = lockSnapshot.data() || {};
       const reservedByOther = lockSnapshot.exists() && lockPayload.appointment_id !== excludeAppointmentId;
+
+      if (closureSnapshot.exists()) {
+        return {
+          time: timeValue,
+          start_at: startAt,
+          available: false,
+          reason: closedReason,
+        };
+      }
 
       if (!isFutureSlot(dateValue, timeValue)) {
         return {
@@ -347,6 +419,8 @@ export async function fetchDailyAvailability({ departmentId, date, excludeAppoin
     return {
       department_id: departmentId,
       date: dateValue,
+      closed: closureSnapshot.exists(),
+      closed_reason: closedReason,
       items,
     };
   } catch (error) {
@@ -387,7 +461,7 @@ export async function fetchUserAppointment(appointmentId) {
 export async function createUserAppointment({ departmentId, startAt }) {
   try {
     const authUser = await requireSignedInUser();
-    const department = await getActiveDepartment(departmentId);
+    const department = await getDepartment(departmentId);
     const { slotKey, startAt: normalizedStartAt } = validateRequestedSlot(startAt, departmentId);
     const db = getFirestoreDb();
     const now = nowIsoString();
@@ -397,6 +471,15 @@ export async function createUserAppointment({ departmentId, startAt }) {
       const userDepartmentRef = userDepartmentLockRef(db, authUser.uid, department.id);
       const userSlotRef = userSlotLockRef(db, authUser.uid, slotKey);
       const departmentSlotRef = departmentSlotLockRef(db, department.id, slotKey);
+      const closureRef = departmentClosureRef(db, department.id, normalizedStartAt.split("T")[0]);
+
+      const closureSnapshot = await transaction.get(closureRef);
+      if (closureSnapshot.exists()) {
+        throw validationError(
+          `休診日のため予約できません。${closureSnapshot.data()?.reason ? ` 理由: ${closureSnapshot.data().reason}` : ""}`,
+          "CLOSED"
+        );
+      }
 
       const userDepartmentSnapshot = await transaction.get(userDepartmentRef);
       if (userDepartmentSnapshot.exists()) {
@@ -480,6 +563,16 @@ export async function updateUserAppointment({ appointmentId, startAt }) {
         throw validationError("同じ日時は選択できません。別の日時をお選びください。", "NO_CHANGE");
       }
 
+      const closureSnapshot = await transaction.get(
+        departmentClosureRef(db, current.department_id, normalizedStartAt.split("T")[0])
+      );
+      if (closureSnapshot.exists()) {
+        throw validationError(
+          `休診日のため予約変更できません。${closureSnapshot.data()?.reason ? ` 理由: ${closureSnapshot.data().reason}` : ""}`,
+          "CLOSED"
+        );
+      }
+
       const nextUserSlotRef = userSlotLockRef(db, authUser.uid, slotKey);
       const nextDepartmentSlotRef = departmentSlotLockRef(db, current.department_id, slotKey);
       const nextUserSlotSnapshot = await transaction.get(nextUserSlotRef);
@@ -555,6 +648,148 @@ export async function deleteUserAppointment(appointmentId) {
       transaction.delete(targetRef);
       transaction.delete(userDepartmentLockRef(db, authUser.uid, current.department_id));
       transaction.delete(userSlotLockRef(db, authUser.uid, current.slot_key));
+      transaction.delete(departmentSlotLockRef(db, current.department_id, current.slot_key));
+    });
+
+    return { status: "ok" };
+  } catch (error) {
+    throw wrapUnknownError(error, "予約のキャンセルに失敗しました。");
+  }
+}
+
+export async function fetchAdminDepartments() {
+  try {
+    await requireAdminUser();
+    const db = getFirestoreDb();
+    const snapshots = await getDocs(query(collection(db, "departments"), orderBy("sort_order", "asc")));
+    return { items: snapshots.docs.map((snapshot) => toDepartmentOut(snapshot)) };
+  } catch (error) {
+    throw wrapUnknownError(error, "診療科管理情報の取得に失敗しました。");
+  }
+}
+
+export async function updateDepartmentByAdmin({ departmentId, isActive }) {
+  try {
+    await requireAdminUser();
+    const department = await getDepartment(departmentId, { requireActive: false });
+    const payload = {
+      name: department.name,
+      sort_order: department.sort_order,
+      is_active: Boolean(isActive),
+      updated_at: nowIsoString(),
+    };
+    await setDoc(departmentRef(getFirestoreDb(), departmentId), payload, { merge: true });
+    return toDepartmentOut(departmentId, payload);
+  } catch (error) {
+    throw wrapUnknownError(error, "診療科の更新に失敗しました。");
+  }
+}
+
+export async function fetchDepartmentClosuresByAdmin() {
+  try {
+    await requireAdminUser();
+    const db = getFirestoreDb();
+    const snapshots = await getDocs(query(collection(db, "department_closures"), orderBy("date", "asc")));
+    return { items: snapshots.docs.map((snapshot) => toClosureOut(snapshot)) };
+  } catch (error) {
+    throw wrapUnknownError(error, "休診日の取得に失敗しました。");
+  }
+}
+
+export async function saveDepartmentClosureByAdmin({ departmentId, date, reason }) {
+  try {
+    const authUser = await requireAdminUser();
+    const department = await getDepartment(departmentId, { requireActive: false });
+    const db = getFirestoreDb();
+    const dateValue = normalizeDateValue(date);
+    const ref = departmentClosureRef(db, departmentId, dateValue);
+    const snapshot = await getDoc(ref);
+    const now = nowIsoString();
+    const payload = {
+      department_id: department.id,
+      department_name: department.name,
+      date: dateValue,
+      reason: reason?.trim() || null,
+      created_by: snapshot.data()?.created_by || authUser.uid,
+      created_at: snapshot.data()?.created_at || now,
+      updated_at: now,
+    };
+
+    await setDoc(ref, payload, { merge: true });
+    return toClosureOut(ref.id, payload);
+  } catch (error) {
+    throw wrapUnknownError(error, "休診日の登録に失敗しました。");
+  }
+}
+
+export async function deleteDepartmentClosureByAdmin({ departmentId, date }) {
+  try {
+    await requireAdminUser();
+    const db = getFirestoreDb();
+    await deleteDoc(departmentClosureRef(db, departmentId, date));
+    return { status: "ok" };
+  } catch (error) {
+    throw wrapUnknownError(error, "休診日の解除に失敗しました。");
+  }
+}
+
+export async function fetchDepartmentAppointmentsByAdmin({ departmentId, date }) {
+  try {
+    await requireAdminUser();
+    const db = getFirestoreDb();
+    const dateValue = normalizeDateValue(date);
+    const snapshots = await getDocs(
+      query(
+        collectionGroup(db, "appointments"),
+        where("start_at", ">=", `${dateValue}T00:00:00`),
+        where("start_at", "<", `${nextDateValue(dateValue)}T00:00:00`),
+        orderBy("start_at", "asc")
+      )
+    );
+
+    const items = snapshots.docs
+      .map((snapshot) => toAppointmentOut(snapshot))
+      .filter(
+        (appointment) => appointment.department_id === departmentId && appointment.status === "confirmed"
+      );
+
+    const userIds = [...new Set(items.map((appointment) => appointment.user_id))];
+    const userSnapshots = await Promise.all(userIds.map((userId) => getDoc(userRef(db, userId))));
+    const userMap = new Map(
+      userSnapshots
+        .filter((snapshot) => snapshot.exists())
+        .map((snapshot) => [snapshot.id, snapshot.data() || {}])
+    );
+
+    return {
+      items: items.map((appointment) => ({
+        ...appointment,
+        patient_user_name: userMap.get(appointment.user_id)?.user_name || "患者",
+        patient_email: userMap.get(appointment.user_id)?.email || "",
+        patient_phone: userMap.get(appointment.user_id)?.phone || null,
+      })),
+    };
+  } catch (error) {
+    throw wrapUnknownError(error, "予約一覧の取得に失敗しました。");
+  }
+}
+
+export async function deleteAppointmentByAdmin({ appointmentId, userId }) {
+  try {
+    await requireAdminUser();
+    const db = getFirestoreDb();
+    const targetRef = appointmentRef(db, userId, appointmentId);
+
+    await runTransaction(db, async (transaction) => {
+      const appointmentSnapshot = await transaction.get(targetRef);
+      if (!appointmentSnapshot.exists() || appointmentSnapshot.data()?.status !== "confirmed") {
+        throw notFoundError("予約が見つかりません。");
+      }
+
+      const current = appointmentSnapshot.data();
+      transaction.delete(targetRef);
+      transaction.delete(userDepartmentLockRef(db, userId, current.department_id));
+      transaction.delete(userSlotLockRef(db, userId, current.slot_key));
       transaction.delete(departmentSlotLockRef(db, current.department_id, current.slot_key));
     });
 

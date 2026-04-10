@@ -17,6 +17,7 @@ export default function PageShell({
   showBack = true,
   backTo,
   actions = null,
+  heroSubtitle = "見やすく、迷いにくい予約導線を優先した患者向け画面です。",
 }) {
   const navigate = useNavigate();
 
@@ -49,7 +50,7 @@ export default function PageShell({
             総合病院 予約カレンダー
           </Heading>
           <Text mt={2} fontSize={{ base: "md", md: "lg" }} opacity={0.92}>
-            見やすく、迷いにくい予約導線を優先した患者向け画面です。
+            {heroSubtitle}
           </Text>
         </Container>
       </Box>
