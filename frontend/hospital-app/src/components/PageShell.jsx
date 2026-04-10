@@ -18,6 +18,7 @@ export default function PageShell({
   backTo,
   actions = null,
   heroSubtitle = "見やすく、迷いにくい予約導線を優先した患者向け画面です。",
+  maxW = "container.lg",
 }) {
   const navigate = useNavigate();
 
@@ -42,7 +43,7 @@ export default function PageShell({
         px={4}
         boxShadow="sm"
       >
-        <Container maxW="container.lg">
+        <Container maxW={maxW}>
           <Text fontSize={{ base: "sm", md: "md" }} fontWeight="700" letterSpacing="0.08em">
             HOSPITAL RESERVATION
           </Text>
@@ -55,7 +56,7 @@ export default function PageShell({
         </Container>
       </Box>
 
-      <Container maxW="container.lg" py={{ base: 5, md: 8 }}>
+      <Container maxW={maxW} py={{ base: 5, md: 8 }}>
         <Flex
           mb={6}
           direction={{ base: "column", md: "row" }}

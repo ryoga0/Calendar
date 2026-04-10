@@ -17,6 +17,7 @@ import {
 import { fetchAppointment, updateAppointment } from "../api/appointmentApi";
 import { fetchAvailability } from "../api/availabilityApi";
 import { CalendarLoadingCard, LoadingButtonGrid, LoadingCard } from "../components/LoadingState";
+import { PatientInfoGrid, PatientInfoItem, PatientPanel } from "../components/PatientPanels";
 import PageShell from "../components/PageShell";
 import { useAuth } from "../auth/AuthContext";
 import { dayPickerFormatters, dayPickerLocale } from "../utils/dayPickerLocale";
@@ -127,10 +128,7 @@ export default function AppointmentEdit() {
       ) : appointment ? (
         <Grid templateColumns={{ base: "1fr", lg: "360px 1fr" }} gap={6}>
           <GridItem>
-            <Box bg="white" borderRadius="24px" p={5} boxShadow="sm">
-              <Heading size="md" mb={4}>
-                日付を選択
-              </Heading>
+            <PatientPanel title="日付を選択" description="変更したい受診日をカレンダーから選びます。">
               <Box className="calendar-picker">
                 <DayPicker
                   mode="single"
@@ -142,25 +140,20 @@ export default function AppointmentEdit() {
                   lang="ja"
                 />
               </Box>
-            </Box>
+            </PatientPanel>
           </GridItem>
 
           <GridItem>
-            <Box bg="white" borderRadius="24px" p={{ base: 5, md: 7 }} boxShadow="sm" minH="460px">
+            <PatientPanel
+              title="予約変更"
+              description="現在の予約を確認しながら、新しい日時を選択できます。"
+              minH="460px"
+            >
               <Stack spacing={5}>
-                <Box>
-                  <Text color="surface.700">診療科</Text>
-                  <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="800" mt={1}>
-                    {appointment.department_name}
-                  </Text>
-                </Box>
-
-                <Box>
-                  <Text color="surface.700">現在の予約</Text>
-                  <Text fontSize="lg" fontWeight="700" mt={1}>
-                    {formatDateTime(appointment.start_at)}
-                  </Text>
-                </Box>
+                <PatientInfoGrid columns={{ base: 1, md: 2 }}>
+                  <PatientInfoItem label="診療科" value={appointment.department_name} />
+                  <PatientInfoItem label="現在の予約" value={formatDateTime(appointment.start_at)} />
+                </PatientInfoGrid>
 
                 {availabilityLoading ? (
                   <LoadingButtonGrid />
@@ -219,7 +212,7 @@ export default function AppointmentEdit() {
                   </>
                 )}
               </Stack>
-            </Box>
+            </PatientPanel>
           </GridItem>
         </Grid>
       ) : null}

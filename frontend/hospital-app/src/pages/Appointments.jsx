@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   Alert,
   AlertIcon,
-  Box,
   Button,
   HStack,
   Stack,
@@ -11,6 +10,7 @@ import {
 } from "@chakra-ui/react";
 import { deleteAppointment, fetchAppointments } from "../api/appointmentApi";
 import { LoadingCard } from "../components/LoadingState";
+import { PatientInfoGrid, PatientInfoItem, PatientPanel } from "../components/PatientPanels";
 import PageShell from "../components/PageShell";
 import { useAuth } from "../auth/AuthContext";
 import { formatDateTime } from "../utils/dateTime";
@@ -81,28 +81,38 @@ export default function Appointments() {
           <LoadingCard minH="180px" titleWidth="32%" lines={4} />
         </Stack>
       ) : appointments.length === 0 ? (
-        <Box bg="white" borderRadius="24px" p={{ base: 5, md: 7 }} boxShadow="sm">
+        <PatientPanel
+          title="現在、予約はありません"
+          description="診療科を選んで、新しい予約をお取りください。"
+        >
           <Stack spacing={4}>
-            <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="800">
-              現在、予約はありません
-            </Text>
-            <Text fontSize="lg" color="surface.700">
-              診療科を選んで、新しい予約をお取りください。
-            </Text>
             <Button colorScheme="teal" alignSelf="flex-start" onClick={() => navigate("/")}>
               診療科を選ぶ
             </Button>
           </Stack>
-        </Box>
+        </PatientPanel>
       ) : (
         <Stack spacing={4}>
           {appointments.map((appointment) => (
-            <Box key={appointment.id} bg="white" borderRadius="24px" p={{ base: 5, md: 6 }} boxShadow="sm">
+            <PatientPanel
+              key={appointment.id}
+              title={appointment.department_name}
+              description="予約内容の確認、日時変更、キャンセルを行えます。"
+              badge={{ label: "予約確定", colorScheme: "green" }}
+            >
               <Stack spacing={4}>
-                <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="800">
-                  {appointment.department_name}
-                </Text>
-                <Text fontSize="lg">{formatDateTime(appointment.start_at)}</Text>
+                <PatientInfoGrid columns={{ base: 1, md: 2 }}>
+                  <PatientInfoItem
+                    label="予約日時"
+                    value={formatDateTime(appointment.start_at)}
+                    helper="詳細ページから変更やキャンセルができます。"
+                  />
+                  <PatientInfoItem
+                    label="現在の状態"
+                    value="予約確定"
+                    helper="来院前に日時をご確認ください。"
+                  />
+                </PatientInfoGrid>
                 <HStack spacing={3} flexWrap="wrap">
                   <Button
                     colorScheme="teal"
@@ -126,7 +136,7 @@ export default function Appointments() {
                   </Button>
                 </HStack>
               </Stack>
-            </Box>
+            </PatientPanel>
           ))}
         </Stack>
       )}

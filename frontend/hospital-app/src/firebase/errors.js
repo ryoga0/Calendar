@@ -11,6 +11,10 @@ export function unauthorizedError(message = "ログインが必要です。") {
 
 export function firebaseErrorMessage(error, fallbackMessage) {
   const code = error?.code || "";
+  const detailsMessage =
+    typeof error?.details === "object" && error?.details && typeof error.details.message === "string"
+      ? error.details.message
+      : "";
 
   switch (code) {
     case "auth/email-already-in-use":
@@ -29,11 +33,24 @@ export function firebaseErrorMessage(error, fallbackMessage) {
     case "auth/network-request-failed":
       return buildError("通信に失敗しました。ネットワーク状態を確認してください。", "NETWORK_ERROR", 503);
     case "permission-denied":
+    case "functions/permission-denied":
       return buildError("この操作を実行する権限がありません。", "FORBIDDEN", 403);
     case "unavailable":
+    case "functions/unavailable":
       return buildError("Firebase に接続できません。時間をおいて再度お試しください。", "UNAVAILABLE", 503);
+    case "functions/invalid-argument":
+      return buildError(detailsMessage || fallbackMessage, "VALIDATION_ERROR", 400);
+    case "functions/failed-precondition":
+    case "functions/already-exists":
+      return buildError(detailsMessage || fallbackMessage, "CONFLICT", 409);
+    case "functions/not-found":
+      return buildError(detailsMessage || "対象のデータが見つかりませんでした。", "NOT_FOUND", 404);
+    case "functions/unauthenticated":
+      return buildError(detailsMessage || "ログインが必要です。", "UNAUTHORIZED", 401);
+    case "functions/internal":
+      return buildError(detailsMessage || fallbackMessage, "APP_ERROR", 500);
     default:
-      return buildError(fallbackMessage, code || "APP_ERROR", 400);
+      return buildError(detailsMessage || fallbackMessage, code || "APP_ERROR", 400);
   }
 }
 

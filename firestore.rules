@@ -13,10 +13,6 @@ service cloud.firestore {
       return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    function isUserScopedLock(lockId) {
-      return signedIn() && lockId.matches('^' + request.auth.uid + '_.*$');
-    }
-
     match /admins/{adminId} {
       allow read: if signedIn() && request.auth.uid == adminId || isAdmin();
       allow write: if false;
@@ -45,19 +41,25 @@ service cloud.firestore {
     }
 
     match /user_department_locks/{lockId} {
-      allow read, delete: if isUserScopedLock(lockId) || isAdmin();
-      allow create, update: if isAdmin() || isUserScopedLock(lockId) && request.resource.data.user_id == request.auth.uid;
+      allow read, delete: if isAdmin() || signedIn();
+      allow create, update: if isAdmin() || signedIn() && request.resource.data.user_id == request.auth.uid;
     }
 
     match /user_slot_locks/{lockId} {
-      allow read, delete: if isUserScopedLock(lockId) || isAdmin();
-      allow create, update: if isAdmin() || isUserScopedLock(lockId) && request.resource.data.user_id == request.auth.uid;
+      allow read, delete: if isAdmin() || signedIn();
+      allow create, update: if isAdmin() || signedIn() && request.resource.data.user_id == request.auth.uid;
     }
 
     match /department_slot_locks/{lockId} {
       allow read: if true;
       allow create, update: if isAdmin() || signedIn() && request.resource.data.user_id == request.auth.uid;
       allow delete: if isAdmin() || signedIn() && resource.data.user_id == request.auth.uid;
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if signedIn() && request.resource.data.actor_user_id == request.auth.uid;
+      allow update, delete: if false;
     }
   }
 }

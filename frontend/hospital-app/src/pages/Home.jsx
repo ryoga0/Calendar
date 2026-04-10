@@ -3,12 +3,9 @@ import { useNavigate } from "react-router-dom";
 import {
   Alert,
   AlertIcon,
-  Badge,
-  Box,
   Button,
   Grid,
   GridItem,
-  Heading,
   HStack,
   SkeletonText,
   SimpleGrid,
@@ -18,6 +15,7 @@ import {
 import { fetchAppointments } from "../api/appointmentApi";
 import { fetchDepartments } from "../api/departmentApi";
 import { LoadingButtonGrid, LoadingCard } from "../components/LoadingState";
+import { PatientInfoGrid, PatientInfoItem, PatientPanel } from "../components/PatientPanels";
 import PageShell from "../components/PageShell";
 import { useAuth } from "../auth/AuthContext";
 import { formatDateTime } from "../utils/dateTime";
@@ -89,24 +87,12 @@ export default function Home() {
       >
         <Grid templateColumns={{ base: "1fr", lg: "1.2fr 0.8fr" }} gap={6}>
           <GridItem>
-            <Box bg="white" borderRadius="24px" p={{ base: 5, md: 8 }} boxShadow="sm">
+            <PatientPanel
+              badge={{ label: "外来予約", colorScheme: "teal" }}
+              title="ご希望の診療科を選び、空いている日時から予約できます"
+              description="文字を大きめにし、迷いにくい流れを優先しています。ご高齢の方でも操作しやすいよう、手順はできるだけ少なくしています。"
+            >
               <Stack spacing={4}>
-                <Badge
-                  alignSelf="flex-start"
-                  colorScheme="teal"
-                  px={3}
-                  py={1}
-                  borderRadius="full"
-                  fontSize="sm"
-                >
-                  外来予約
-                </Badge>
-                <Heading size={{ base: "md", md: "lg" }}>
-                  ご希望の診療科を選び、空いている日時から予約できます
-                </Heading>
-                <Text fontSize={{ base: "lg", md: "xl" }} color="surface.700">
-                  文字を大きめにし、迷いにくい流れを優先しています。ご高齢の方でも操作しやすいよう、手順はできるだけ少なくしています。
-                </Text>
                 <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3} pt={2}>
                   <Button colorScheme="teal" onClick={() => navigate("/login")}>
                     ログインする
@@ -116,19 +102,18 @@ export default function Home() {
                   </Button>
                 </SimpleGrid>
               </Stack>
-            </Box>
+            </PatientPanel>
           </GridItem>
 
           <GridItem>
-            <Box bg="white" borderRadius="24px" p={{ base: 5, md: 8 }} boxShadow="sm">
+            <PatientPanel title="診療の流れ" description="予約完了までの流れを4つの手順にまとめています。">
               <Stack spacing={4}>
-                <Heading size="md">診療の流れ</Heading>
                 <Text fontSize="lg">1. ログインまたは新規登録</Text>
                 <Text fontSize="lg">2. 診療科を選択</Text>
                 <Text fontSize="lg">3. 日付と時間を選択</Text>
                 <Text fontSize="lg">4. 内容を確認して予約</Text>
               </Stack>
-            </Box>
+            </PatientPanel>
           </GridItem>
         </Grid>
       </PageShell>
@@ -169,15 +154,14 @@ export default function Home() {
         <Stack spacing={6}>
           <Grid templateColumns={{ base: "1fr", lg: "1fr 1fr" }} gap={6}>
             <GridItem>
-              <Box bg="white" borderRadius="24px" p={{ base: 5, md: 7 }} boxShadow="sm">
+              <PatientPanel title="次の予約" description="直近の受診予定を確認できます。">
                 <Stack spacing={4}>
-                  <Heading size="md">次の予約</Heading>
                   {nextAppointment ? (
                     <>
-                      <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="800">
-                        {nextAppointment.department_name}
-                      </Text>
-                      <Text fontSize="lg">{formatDateTime(nextAppointment.start_at)}</Text>
+                      <PatientInfoGrid columns={{ base: 1, md: 2 }}>
+                        <PatientInfoItem label="診療科" value={nextAppointment.department_name} />
+                        <PatientInfoItem label="予約日時" value={formatDateTime(nextAppointment.start_at)} />
+                      </PatientInfoGrid>
                       <Button
                         colorScheme="teal"
                         alignSelf="flex-start"
@@ -190,13 +174,12 @@ export default function Home() {
                     <Text fontSize="lg">現在、予約は入っていません。</Text>
                   )}
                 </Stack>
-              </Box>
+              </PatientPanel>
             </GridItem>
 
             <GridItem>
-              <Box bg="white" borderRadius="24px" p={{ base: 5, md: 7 }} boxShadow="sm">
+              <PatientPanel title="予約メニュー" description="予約の確認、プロフィール確認、管理者画面への移動ができます。">
                 <Stack spacing={4}>
-                  <Heading size="md">予約メニュー</Heading>
                   <Button colorScheme="teal" onClick={() => navigate("/appointments")}>
                     予約一覧を見る
                   </Button>
@@ -209,16 +192,15 @@ export default function Home() {
                     プロフィールを確認する
                   </Button>
                 </Stack>
-              </Box>
+              </PatientPanel>
             </GridItem>
           </Grid>
 
-          <Box bg="white" borderRadius="24px" p={{ base: 5, md: 7 }} boxShadow="sm">
+          <PatientPanel
+            title="診療科を選んで予約する"
+            description="空いている日時をカレンダーから確認し、予約できます。"
+          >
             <Stack spacing={4}>
-              <Heading size="md">診療科を選んで予約する</Heading>
-              <Text fontSize="lg" color="surface.700">
-                空いている日時をカレンダーから確認し、予約できます。
-              </Text>
               <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={4}>
                 {departments.map((department) => (
                   <Button
@@ -238,10 +220,10 @@ export default function Home() {
                     </Text>
                     <Text fontSize="sm">予約へ進む</Text>
                   </Button>
-                ))}
+                  ))}
               </SimpleGrid>
             </Stack>
-          </Box>
+          </PatientPanel>
         </Stack>
       )}
     </PageShell>

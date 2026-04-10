@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import { AdminRoute, ProtectedRoute, PublicOnlyRoute } from "./components/RouteGuards";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminDepartments from "./pages/AdminDepartments";
 import AppointmentDetail from "./pages/AppointmentDetail";
 import AppointmentEdit from "./pages/AppointmentEdit";
 import Appointments from "./pages/Appointments";
@@ -72,6 +73,14 @@ function App() {
               <ProtectedRoute>
                 <Profile />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/departments"
+            element={
+              <AdminRoute>
+                <AdminDepartments />
+              </AdminRoute>
             }
           />
           <Route

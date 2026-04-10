@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import {
   Alert,
   AlertIcon,
-  Box,
   Button,
   FormControl,
   FormLabel,
@@ -10,6 +9,7 @@ import {
   Stack,
   Text,
 } from "@chakra-ui/react";
+import { PatientPanel } from "../components/PatientPanels";
 import PageShell from "../components/PageShell";
 import { updateCurrentUser } from "../api/userApi";
 import { useAuth } from "../auth/AuthContext";
@@ -65,7 +65,10 @@ export default function Profile() {
         </Alert>
       )}
 
-      <Box bg="white" borderRadius="24px" p={{ base: 5, md: 7 }} boxShadow="sm">
+      <PatientPanel
+        title="登録情報"
+        description="受付で確認しやすいように、お名前と電話番号を最新に保ってください。"
+      >
         <Stack spacing={5}>
           <FormControl>
             <FormLabel>お名前</FormLabel>
@@ -86,7 +89,7 @@ export default function Profile() {
             保存する
           </Button>
         </Stack>
-      </Box>
+      </PatientPanel>
     </PageShell>
   );
 }

@@ -1,9 +1,13 @@
 import {
   deleteAppointmentByAdmin,
+  deleteDepartmentByAdmin,
   deleteDepartmentClosureByAdmin,
   fetchAdminDepartments,
+  fetchAuditLogsByAdmin,
   fetchDepartmentAppointmentsByAdmin,
   fetchDepartmentClosuresByAdmin,
+  reorderDepartmentsByAdmin,
+  saveDepartmentByAdmin,
   saveDepartmentClosureByAdmin,
   updateDepartmentByAdmin,
 } from "../firebase/patientPortal";
@@ -14,6 +18,18 @@ export function fetchManagedDepartments(token) {
 
 export function updateDepartmentStatus({ departmentId, isActive, token }) {
   return updateDepartmentByAdmin({ departmentId, isActive, token });
+}
+
+export function saveManagedDepartment({ departmentId, name, sortOrder, isActive, token }) {
+  return saveDepartmentByAdmin({ departmentId, name, sortOrder, isActive, token });
+}
+
+export function deleteManagedDepartment({ departmentId, token }) {
+  return deleteDepartmentByAdmin({ departmentId, token });
+}
+
+export function reorderManagedDepartments({ orderedDepartmentIds, token }) {
+  return reorderDepartmentsByAdmin({ orderedDepartmentIds, token });
 }
 
 export function fetchDepartmentClosures(token) {
@@ -34,4 +50,8 @@ export function fetchDepartmentAppointments({ departmentId, date, token }) {
 
 export function cancelAppointmentByAdmin({ appointmentId, userId, token }) {
   return deleteAppointmentByAdmin({ appointmentId, userId, token });
+}
+
+export function fetchAuditLogs(token) {
+  return fetchAuditLogsByAdmin(token);
 }

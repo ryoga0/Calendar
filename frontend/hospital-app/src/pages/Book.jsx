@@ -17,6 +17,7 @@ import {
 import { createAppointment } from "../api/appointmentApi";
 import { fetchAvailability } from "../api/availabilityApi";
 import { LoadingButtonGrid } from "../components/LoadingState";
+import { PatientInfoItem, PatientPanel } from "../components/PatientPanels";
 import PageShell from "../components/PageShell";
 import { useAuth } from "../auth/AuthContext";
 import { dayPickerFormatters, dayPickerLocale } from "../utils/dayPickerLocale";
@@ -69,6 +70,7 @@ export default function Book() {
         token,
       });
       navigate("/appointments", {
+        replace: true,
         state: { message: "予約が完了しました。" },
       });
     } catch (e) {
@@ -92,10 +94,7 @@ export default function Book() {
 
       <Grid templateColumns={{ base: "1fr", lg: "360px 1fr" }} gap={6}>
         <GridItem>
-          <Box bg="white" borderRadius="24px" p={5} boxShadow="sm">
-            <Heading size="md" mb={4}>
-              日付を選択
-            </Heading>
+          <PatientPanel title="日付を選択" description="受診したい日をカレンダーから選びます。">
             <Box className="calendar-picker">
               <DayPicker
                 mode="single"
@@ -107,15 +106,23 @@ export default function Book() {
                 lang="ja"
               />
             </Box>
-          </Box>
+          </PatientPanel>
         </GridItem>
 
         <GridItem>
-          <Box bg="white" borderRadius="24px" p={{ base: 5, md: 7 }} boxShadow="sm" minH="420px">
+          <PatientPanel
+            title={location.state?.departmentName || "新しい予約"}
+            description="空いている時間から受診枠を選択できます。"
+            minH="420px"
+          >
             <Stack spacing={5}>
-              <Heading size="md">
-                {selectedDate.toLocaleDateString()} の予約可能時間
-              </Heading>
+              <PatientInfoItem
+                label="選択中の日付"
+                value={selectedDate.toLocaleDateString()}
+                helper="空いている時間だけ予約できます。"
+              />
+
+              <Heading size="md">{selectedDate.toLocaleDateString()} の予約可能時間</Heading>
 
               {loading ? (
                 <LoadingButtonGrid />
@@ -164,7 +171,7 @@ export default function Book() {
                 </>
               )}
             </Stack>
-          </Box>
+          </PatientPanel>
         </GridItem>
       </Grid>
     </PageShell>
