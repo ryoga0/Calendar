@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import { AdminRoute, ProtectedRoute, PublicOnlyRoute } from "./components/RouteGuards";
+import ScrollToTop from "./components/ScrollToTop";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminDepartments from "./pages/AdminDepartments";
 import AppointmentDetail from "./pages/AppointmentDetail";
@@ -17,6 +18,7 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route
