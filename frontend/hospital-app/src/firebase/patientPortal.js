@@ -43,7 +43,7 @@ import {
   timeFromStartAt,
 } from "./hospitalSchedule";
 
-const AUDIT_LOG_LIMIT = 30;
+const AUDIT_LOG_LIMIT = 200;
 
 function nowIsoString() {
   return new Date().toISOString();
@@ -436,7 +436,6 @@ export async function fetchDailyAvailability({ departmentId, date, excludeAppoin
     );
 
     const items = candidateTimes.map((timeValue, index) => {
-      const slotKey = buildSlotKey(dateValue, timeValue);
       const startAt = buildStartAt(dateValue, timeValue);
       const lockSnapshot = lockSnapshots[index];
       const lockPayload = lockSnapshot.data() || {};

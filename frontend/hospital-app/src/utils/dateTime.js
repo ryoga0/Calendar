@@ -34,3 +34,23 @@ export function parseDateInput(value) {
   const [year, month, day] = value.split("-").map(Number);
   return new Date(year, month - 1, day);
 }
+
+export function startOfDay(value = new Date()) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+export function getAppointmentCalendarDisabledDays(referenceDate = new Date()) {
+  return [{ before: startOfDay(referenceDate) }, { dayOfWeek: [0] }];
+}
+
+export function getNextSelectableAppointmentDate(referenceDate = new Date()) {
+  const date = startOfDay(referenceDate);
+
+  while (date.getDay() === 0) {
+    date.setDate(date.getDate() + 1);
+  }
+
+  return date;
+}

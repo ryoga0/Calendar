@@ -21,7 +21,12 @@ import { PatientInfoGrid, PatientInfoItem, PatientPanel } from "../components/Pa
 import PageShell from "../components/PageShell";
 import { useAuth } from "../auth/AuthContext";
 import { dayPickerFormatters, dayPickerLocale } from "../utils/dayPickerLocale";
-import { buildLocalDateTime, formatDateTime, toDateInputValue } from "../utils/dateTime";
+import {
+  buildLocalDateTime,
+  formatDateTime,
+  getAppointmentCalendarDisabledDays,
+  toDateInputValue,
+} from "../utils/dateTime";
 
 export default function AppointmentEdit() {
   const { appointmentId } = useParams();
@@ -134,7 +139,7 @@ export default function AppointmentEdit() {
                   mode="single"
                   selected={selectedDate}
                   onSelect={setSelectedDate}
-                  disabled={{ before: new Date() }}
+                  disabled={getAppointmentCalendarDisabledDays()}
                   locale={dayPickerLocale}
                   formatters={dayPickerFormatters}
                   lang="ja"

@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { DayPicker } from "react-day-picker";
+import "react-day-picker/dist/style.css";
 import {
   Alert,
   AlertIcon,
@@ -11,6 +13,11 @@ import {
   Heading,
   HStack,
   Input,
+  Popover,
+  PopoverArrow,
+  PopoverBody,
+  PopoverContent,
+  PopoverTrigger,
   Select,
   Stack,
   Text,
@@ -29,7 +36,9 @@ import {
 import { useAuth } from "../auth/AuthContext";
 import { LoadingCard } from "../components/LoadingState";
 import PageShell from "../components/PageShell";
-import { formatDateTime, toDateInputValue } from "../utils/dateTime";
+import { dayPickerFormatters, dayPickerLocale } from "../utils/dayPickerLocale";
+import { buildAuditLogDepartmentOptions, filterAuditLogs } from "../utils/auditLogs";
+import { formatDate, formatDateTime, parseDateInput, toDateInputValue } from "../utils/dateTime";
 
 function AdminLoadingLayout() {
   return (
@@ -63,6 +72,12 @@ export default function AdminDashboard() {
     departmentId: "",
     date: toDateInputValue(new Date()),
   });
+  const [auditLogFilter, setAuditLogFilter] = useState({
+    department: "",
+    name: "",
+    date: "",
+  });
+  const [isAuditDatePickerOpen, setIsAuditDatePickerOpen] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -71,27 +86,27 @@ export default function AdminDashboard() {
     setAuditLogs(result.items);
   };
 
-  const loadAdminData = async () => {
-    setPageLoading(true);
-    setError("");
-
-    try {
-      const [departmentRes, closureRes, auditLogRes] = await Promise.all([
-        fetchManagedDepartments(token),
-        fetchDepartmentClosures(token),
-        fetchAuditLogs(token),
-      ]);
-      setDepartments(departmentRes.items);
-      setClosures(closureRes.items);
-      setAuditLogs(auditLogRes.items);
-    } catch (nextError) {
-      setError(nextError.message || "管理情報の取得に失敗しました。");
-    } finally {
-      setPageLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const loadAdminData = async () => {
+      setPageLoading(true);
+      setError("");
+
+      try {
+        const [departmentRes, closureRes, auditLogRes] = await Promise.all([
+          fetchManagedDepartments(token),
+          fetchDepartmentClosures(token),
+          fetchAuditLogs(token),
+        ]);
+        setDepartments(departmentRes.items);
+        setClosures(closureRes.items);
+        setAuditLogs(auditLogRes.items);
+      } catch (nextError) {
+        setError(nextError.message || "管理情報の取得に失敗しました。");
+      } finally {
+        setPageLoading(false);
+      }
+    };
+
     loadAdminData();
   }, [token]);
 
@@ -127,6 +142,18 @@ export default function AdminDashboard() {
       .catch((nextError) => setError(nextError.message || "予約一覧の取得に失敗しました。"))
       .finally(() => setAppointmentsLoading(false));
   }, [appointmentFilter, token]);
+
+  const auditLogDepartmentOptions = useMemo(
+    () => buildAuditLogDepartmentOptions(departments),
+    [departments]
+  );
+
+  const filteredAuditLogs = useMemo(
+    () => filterAuditLogs(auditLogs, auditLogFilter),
+    [auditLogs, auditLogFilter]
+  );
+  const selectedAuditLogDate = auditLogFilter.date ? parseDateInput(auditLogFilter.date) : undefined;
+  const auditLogListHeight = { base: "360px", md: "460px" };
 
   const handleSaveClosure = async () => {
     if (!closureForm.departmentId || !closureForm.date) {
@@ -442,16 +469,169 @@ export default function AdminDashboard() {
             </Stack>
           </Box>
 
-          <Box bg="white" borderRadius="24px" p={{ base: 5, md: 7 }} boxShadow="sm">
+          <Box
+            bg="white"
+            borderRadius="24px"
+            p={{ base: 5, md: 7 }}
+            boxShadow="sm"
+            gridColumn={{ base: "auto", xl: "1 / -1" }}
+          >
             <Stack spacing={4}>
               <Heading size="md">監査ログ</Heading>
               <Text color="surface.700">管理者操作と予約操作の履歴を新しい順に表示します。</Text>
-              {auditLogs.length === 0 ? (
-                <Text color="surface.700">監査ログはまだありません。</Text>
-              ) : (
-                <Box maxH={{ base: "360px", md: "460px" }} overflowY="auto" pr={2}>
+              <Grid templateColumns={{ base: "1fr", md: "1fr 1fr", xl: "1fr 1fr 1fr" }} gap={4}>
+                <FormControl minW={0}>
+                  <FormLabel>診療科で絞り込む</FormLabel>
+                  <Select
+                    value={auditLogFilter.department}
+                    onChange={(event) =>
+                      setAuditLogFilter((current) => ({
+                        ...current,
+                        department: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">すべての診療科</option>
+                    {auditLogDepartmentOptions.map((departmentName) => (
+                      <option key={departmentName} value={departmentName}>
+                        {departmentName}
+                      </option>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl minW={0}>
+                  <FormLabel>名前で検索</FormLabel>
+                  <Input
+                    type="search"
+                    value={auditLogFilter.name}
+                    onChange={(event) =>
+                      setAuditLogFilter((current) => ({
+                        ...current,
+                        name: event.target.value,
+                      }))
+                    }
+                    placeholder="例: 山田、admin@sample.com"
+                  />
+                </FormControl>
+                <FormControl minW={0}>
+                  <FormLabel>日付で検索</FormLabel>
+                  <Stack spacing={2}>
+                    <Popover
+                      isOpen={isAuditDatePickerOpen}
+                      onClose={() => setIsAuditDatePickerOpen(false)}
+                      placement="bottom-start"
+                      isLazy
+                    >
+                      <PopoverTrigger>
+                        <Button
+                          variant="outline"
+                          justifyContent="space-between"
+                          width="100%"
+                          minH="40px"
+                          onClick={() => setIsAuditDatePickerOpen((current) => !current)}
+                        >
+                          <Text noOfLines={1} flex="1" textAlign="left">
+                            {auditLogFilter.date ? formatDate(auditLogFilter.date) : "日付を選択してください"}
+                          </Text>
+                          <Text fontSize="sm" color="surface.700" flexShrink={0} ml={3}>
+                            {auditLogFilter.date ? "変更" : "開く"}
+                          </Text>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent width="fit-content" maxW="100%">
+                        <PopoverArrow />
+                        <PopoverBody p={3}>
+                          <Stack spacing={3}>
+                            <Box className="calendar-picker admin-log-date-picker">
+                              <DayPicker
+                                mode="single"
+                                selected={selectedAuditLogDate}
+                                onSelect={(value) => {
+                                  setAuditLogFilter((current) => ({
+                                    ...current,
+                                    date: value ? toDateInputValue(value) : "",
+                                  }));
+                                  if (value) {
+                                    setIsAuditDatePickerOpen(false);
+                                  }
+                                }}
+                                locale={dayPickerLocale}
+                                formatters={dayPickerFormatters}
+                                lang="ja"
+                              />
+                            </Box>
+                            <HStack justify="space-between">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setAuditLogFilter((current) => ({
+                                    ...current,
+                                    date: "",
+                                  }));
+                                  setIsAuditDatePickerOpen(false);
+                                }}
+                              >
+                                クリア
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setAuditLogFilter((current) => ({
+                                    ...current,
+                                    date: toDateInputValue(new Date()),
+                                  }));
+                                  setIsAuditDatePickerOpen(false);
+                                }}
+                              >
+                                今日
+                              </Button>
+                            </HStack>
+                          </Stack>
+                        </PopoverBody>
+                      </PopoverContent>
+                    </Popover>
+                    <Text fontSize="sm" color="surface.700">
+                      {auditLogFilter.date
+                        ? `選択中: ${formatDate(auditLogFilter.date)}`
+                        : "日付を選ぶと、その日に関係するログだけを表示します。"}
+                    </Text>
+                  </Stack>
+                </FormControl>
+              </Grid>
+
+              <HStack justify="space-between" align="center" flexWrap="wrap">
+                <Text color="surface.700">
+                  {filteredAuditLogs.length} 件 / 全 {auditLogs.length} 件を表示
+                </Text>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    setAuditLogFilter({
+                      department: "",
+                      name: "",
+                      date: "",
+                    })
+                  }
+                >
+                  絞り込みをクリア
+                </Button>
+              </HStack>
+
+              <Box minH={auditLogListHeight} maxH={auditLogListHeight} overflowY="auto" pr={2}>
+                {auditLogs.length === 0 ? (
+                  <Stack align="center" justify="center" h="100%">
+                    <Text color="surface.700">監査ログはまだありません。</Text>
+                  </Stack>
+                ) : filteredAuditLogs.length === 0 ? (
+                  <Stack align="center" justify="center" h="100%">
+                    <Text color="surface.700">条件に一致する監査ログはありません。</Text>
+                  </Stack>
+                ) : (
                   <Stack spacing={3}>
-                    {auditLogs.map((log) => (
+                    {filteredAuditLogs.map((log) => (
                       <Box key={log.id} borderWidth="1px" borderColor="surface.200" borderRadius="20px" p={4}>
                         <Stack spacing={2}>
                           <HStack justify="space-between" align="flex-start">
@@ -468,6 +648,17 @@ export default function AdminDashboard() {
                           <Text color="surface.700">
                             実行者: {log.actor_user_name || log.actor_email || "不明"}
                           </Text>
+                          {log.details?.patient_user_name && (
+                            <Text color="surface.700">対象患者: {log.details.patient_user_name}</Text>
+                          )}
+                          {log.details?.department_name && (
+                            <Text color="surface.700">診療科: {log.details.department_name}</Text>
+                          )}
+                          {log.details?.start_at && (
+                            <Text color="surface.700">
+                              対象日時: {formatDateTime(log.details.start_at)}
+                            </Text>
+                          )}
                           <Text color="surface.700">
                             実行日時: {log.created_at ? formatDateTime(log.created_at) : "不明"}
                           </Text>
@@ -475,8 +666,8 @@ export default function AdminDashboard() {
                       </Box>
                     ))}
                   </Stack>
-                </Box>
-              )}
+                )}
+              </Box>
             </Stack>
           </Box>
         </Grid>

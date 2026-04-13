@@ -54,6 +54,22 @@ body {
   table-layout: fixed;
 }
 
+.calendar-picker.admin-log-date-picker .rdp-root {
+  --rdp-day-width: 3.55rem;
+  --rdp-day-height: 3.55rem;
+  --rdp-day_button-width: 3.25rem;
+  --rdp-day_button-height: 3.25rem;
+  max-width: 24.75rem;
+}
+
+.calendar-picker.admin-log-date-picker .rdp-caption_label {
+  font-size: 1.18rem;
+}
+
+.calendar-picker.admin-log-date-picker .rdp-day_button {
+  font-size: 1rem;
+}
+
 .rdp-caption_label {
   font-size: 1.15rem;
   font-weight: 700;
@@ -90,6 +106,18 @@ body {
   }
 
   .rdp-caption_label {
+    font-size: 1rem;
+  }
+
+  .calendar-picker.admin-log-date-picker .rdp-root {
+    --rdp-day-width: 3.05rem;
+    --rdp-day-height: 3.05rem;
+    --rdp-day_button-width: 2.8rem;
+    --rdp-day_button-height: 2.8rem;
+    max-width: 20.85rem;
+  }
+
+  .calendar-picker.admin-log-date-picker .rdp-caption_label {
     font-size: 1rem;
   }
 }
